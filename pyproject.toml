@@ -1,0 +1,44 @@
+[project]
+name = "business-coach"
+version = "1.1.0"
+description = "AI-powered Personal Artificial Business Coach"
+readme = "README.md"
+authors = [
+    { name = "Hans Koehler", email = "hans@koehler.eu.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "nicegui",
+    "langgraph",
+    "llama-index",
+    "dspy",
+    "python-docx",
+    "pydantic-settings",
+    "langgraph-checkpoint-sqlite>=3.0.3",
+    "pymupdf>=1.27.2.2",
+    "ddgs>=9.14.0",
+    "weasyprint>=68.1",
+]
+
+[project.scripts]
+mpabs = "business_coach.main:cli"
+
+[dependency-groups]
+dev = [
+    "hypothesis",
+    "pytest",
+    "pytest-cov",
+]
+
+
+[tool.uv]
+package = true
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+build_command = ""
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false

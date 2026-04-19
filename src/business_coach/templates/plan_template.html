@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Business Plan: {{ topic_name }}{% endblock %}
+
+{% block content %}
+    <h1>Business Plan</h1>
+    
+    {% for section in plan_sections %}
+        <section id="{{ section.section_name|replace(' ', '-') }}">
+            <h2>{{ section.section_name }}</h2>
+            
+            {% if section.content %}
+                {{ section.content | markdown | safe }}
+            {% else %}
+                <p><em>No content generated yet.</em></p>
+            {% endif %}
+            
+            {% if section.user_feedback and section.user_feedback|length > 0 %}
+                <div style="margin-top: 1em; padding: 0.8em; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                    <p><strong>Review Notes:</strong></p>
+                    <p style="font-size: 0.9em;">{{ section.user_feedback }}</p>
+                </div>
+            {% endif %}
+        </section>
+    {% endfor %}
+{% endblock %}

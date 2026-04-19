@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Target Personas: {{ topic_name }}{% endblock %}
+
+{% block content %}
+    <h1>Target Personas</h1>
+    
+    {% for voice in voices %}
+        <section id="persona-{{ loop.index }}">
+            <h2>{{ voice.name }}</h2>
+            
+            <div style="margin-bottom: 1em; padding: 0.8em; background: #f5f7fa; border-radius: 6px;">
+                <p style="font-style: italic; color: #4a5568;"><strong>Communication Style:</strong> {{ voice.communication_style }}</p>
+            </div>
+            
+            {% if voice.description %}
+                {{ voice.description | markdown | safe }}
+            {% else %}
+                <p><em>No description available.</em></p>
+            {% endif %}
+        </section>
+    {% endfor %}
+{% endblock %}

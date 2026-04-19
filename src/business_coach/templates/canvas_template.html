@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Business Model Canvas: {{ topic_name }}{% endblock %}
+
+{% block content %}
+    <h1>Business Model Canvas</h1>
+    
+    {% for element in canvas_elements %}
+        <section id="{{ element.element_name|replace(' ', '-') }}">
+            <h2>{{ element.element_name }}</h2>
+            
+            {% if element.content %}
+                {{ element.content | markdown | safe }}
+            {% else %}
+                <p><em>No content generated yet.</em></p>
+            {% endif %}
+        </section>
+    {% endfor %}
+{% endblock %}
