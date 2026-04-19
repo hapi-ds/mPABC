@@ -5,6 +5,7 @@ from business_coach.db.repository import (
     BusinessIdeaRepository, CanvasElementRepository, VoicePersonaRepository, PlanSectionRepository, ChatHistoryRepository
 )
 from business_coach.agents.workflow import generate_plan_section
+from business_coach.gui.editable_field import create_editable_field
 
 PLAN_SECTIONS = [
     "Executive Summary", "Company Description", "Market Analysis",
@@ -108,16 +109,29 @@ def create_plan_panel(
                 content = existing.content if existing else ""
                 feedback = existing.user_feedback if existing and existing.user_feedback else ""
                 
-                content_display = ui.textarea(value=content).classes("w-full").props("readonly rows=6")
-                feedback_input = ui.input("Feedback / Review Notes", value=feedback).classes("w-full")
+                editable_content = create_editable_field(
+                    value=content,
+                    label="Section Content",
+                    readonly_label=f"{section_name} Content",
+                    is_frozen=True,
+                    rows=6,
+                ).render(ui.column().classes("w-full q-mb-sm"))
+                
+                editable_feedback = create_editable_field(
+                    value=feedback,
+                    label="Feedback / Review Notes",
+                    readonly_label="Review Notes",
+                    is_frozen=False,
+                    rows=2,
+                ).render(ui.column().classes("w-full q-mb-sm"))
                 
                 # Store component reference for run_all
-                section_components[section_name] = {"display": content_display}
+                section_components[section_name] = {"display": editable_content}
                 
                 spinner = ui.spinner(size="sm").classes("q-ml-sm")
                 spinner.set_visibility(False)
                 
-                def make_handler(sec_name=section_name, disp=content_display, f_in=feedback_input, spin=spinner):
+                def make_handler(sec_name=section_name, content_field=editable_content, f_in=editable_feedback, spin=spinner):
                     async def handler():
                         spin.set_visibility(True)
                         try:
@@ -127,11 +141,10 @@ def create_plan_panel(
                                 business_canvas_text=canvas_text,
                                 personas_text=personas_text,
                                 section_name=sec_name,
-                                previous_content=disp.value,
+                                previous_content=content_field.value,
                                 user_feedback=f_in.value
                             )
-                            disp.value = result
-                            disp.update()
+                            content_field.value = result
                             plan_repo.upsert(topic_id, sec_name, result, f_in.value)
                             ui.notify(f"{sec_name} updated.", type="positive")
                         except Exception as e:
@@ -140,6 +153,10 @@ def create_plan_panel(
                             spin.set_visibility(False)
                     return handler
                 
+                handler = make_handler()
+                
                 with ui.row().classes("w-full justify-end q-mt-sm"):
-                    ui.button("Generate / Redo", on_click=make_handler()).props("color=primary")
+                    ui.button("Generate / Redo", on_click=handler).props("color=primary")
+                    save_content_btn = ui.button("Save Content", on_click=editable_content.save).props("flat color=secondary size=sm")
+                    save_feedback_btn = ui.button("Save Feedback", on_click=editable_feedback.save).props("flat color=secondary size=sm")
 

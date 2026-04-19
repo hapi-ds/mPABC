@@ -5,6 +5,7 @@ import json
 from business_coach.db.repository import BusinessIdeaRepository, ResearchSessionRepository, WebSearchRepository
 from business_coach.agents.workflow import generate_search_sections, run_section_search
 from business_coach.config import AppSettings
+from business_coach.gui.editable_field import create_editable_field
 
 def create_idea_panel(
     container: ui.column,
@@ -35,15 +36,16 @@ def create_idea_panel(
         except Exception:
             saved_sections = []
             
-        desc_input = ui.textarea("Describe your business idea (Problem, Solution, Target Audience, Value Prop)", value=desc).classes("w-full").props("rows=6")
+        editable_desc = create_editable_field(
+            value=desc,
+            label="Describe your business idea (Problem, Solution, Target Audience, Value Prop)",
+            readonly_label="Business Idea",
+            on_save=lambda val: idea_repo.upsert(topic_id, val, [json.dumps(saved_sections)]),
+            is_frozen=True,
+            rows=6,
+        ).render(ui.column().classes("w-full q-mb-md"))
         
-        def save_idea(sections=None):
-            if sections is None:
-                sections = saved_sections
-            idea_repo.upsert(topic_id, desc_input.value, [json.dumps(sections)])
-            ui.notify("Idea saved!", type="positive")
-            
-        ui.button("Save Idea", on_click=lambda: save_idea()).classes("q-mt-sm").props("color=primary")
+        ui.button("Save Idea", on_click=editable_desc.save).classes("q-mt-sm").props("color=primary")
         
         ui.separator().classes("w-full q-my-md")
         ui.label("Granular Market Research").classes("text-h6 font-bold q-mb-sm")
@@ -55,7 +57,7 @@ def create_idea_panel(
         run_handlers = []
         
         async def generate_sections():
-            idea = desc_input.value.strip()
+            idea = editable_desc.value.strip()
             if not idea: 
                 ui.notify("Please enter a business idea first.", type="warning")
                 return
@@ -98,7 +100,12 @@ def create_idea_panel(
                 with ui.card().classes("w-full bg-grey-1"):
                     ui.label(s_name).classes("text-h6 font-bold")
                     
-                    query_input = ui.input("Search Query", value=s_query).classes("w-full q-mb-sm")
+                    editable_query = create_editable_field(
+                        value=s_query,
+                        label="Search Query",
+                        readonly_label="Search Query",
+                        is_frozen=True,
+                    ).render(ui.column().classes("w-full q-mb-sm"))
                     
                     progress_log = ui.log(max_lines=10).classes("w-full h-24 q-mb-sm").style("display: none;")
                     results_area = ui.column().classes("w-full gap-2")
@@ -117,7 +124,7 @@ def create_idea_panel(
                     async def run_this_search():
                         progress_log.style("display: block;")
                         progress_log.clear()
-                        progress_log.push(f"Starting search for: {query_input.value}")
+                        progress_log.push(f"Starting search for: {editable_query.value}")
                         results_area.clear()
                         
                         def p_cb(msg: str):
@@ -129,7 +136,7 @@ def create_idea_panel(
                                 topic_id=topic_id,
                                 business_idea=idea,
                                 section_name=s_name,
-                                search_query=query_input.value,
+                                search_query=editable_query.value,
                                 conn=conn,
                                 rag_engine=rag_engine,
                                 settings=settings,
@@ -152,6 +159,7 @@ def create_idea_panel(
                     with ui.row().classes("w-full items-center gap-2"):
                         ui.button("Run Search", on_click=run_this_search).props("color=primary size=sm")
                         ui.button("Rerun Search", on_click=run_this_search).props("flat color=primary size=sm")
+                        ui.button("Save Query", on_click=editable_query.save).props("flat color=secondary size=sm")
                         
         if saved_sections:
             render_sections(desc, saved_sections)

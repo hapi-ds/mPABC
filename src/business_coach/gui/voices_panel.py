@@ -3,6 +3,7 @@ import sqlite3
 from nicegui import ui
 from business_coach.db.repository import CanvasElementRepository, VoicePersonaRepository
 from business_coach.agents.workflow import generate_voice_personas
+from business_coach.gui.editable_field import create_editable_field
 
 def create_voices_panel(
     container: ui.column,
@@ -47,9 +48,26 @@ def create_voices_panel(
             for p in personas:
                 with personas_container:
                     with ui.card().classes("w-full bg-grey-1"):
-                        ui.label(p.name).classes("text-h6 font-bold")
-                        ui.label(p.description).classes("text-body2 q-mb-sm")
+                        editable_name = create_editable_field(
+                            value=p.name,
+                            label="Persona Name",
+                            readonly_label="Name",
+                            is_frozen=True,
+                        ).render(ui.column().classes("w-full"))
+                        
+                        editable_desc = create_editable_field(
+                            value=p.description,
+                            label="Description",
+                            readonly_label="Description",
+                            is_frozen=True,
+                            rows=4,
+                        ).render(ui.column().classes("w-full q-mb-sm"))
+                        
                         ui.label(f"Style: {p.communication_style}").classes("text-caption italic")
+                        
+                        with ui.row().classes("w-full justify-end q-mt-sm"):
+                            ui.button("Save", on_click=lambda: editable_name.save()).props("flat color=secondary size=sm")
+                            ui.button("Save Description", on_click=lambda: editable_desc.save()).props("flat color=secondary size=sm")
         
         async def run_generation():
             spinner.set_visibility(True)

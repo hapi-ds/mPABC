@@ -32,6 +32,7 @@ from business_coach.db.repository import (
     WorkflowStepRepository,
     WORKFLOW_STEP_ORDER,
 )
+from business_coach.gui.editable_field import create_editable_field
 
 if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
@@ -155,6 +156,7 @@ def create_draft_panel(
         "running": False,         # True while an LLM step is executing
         "step_modes": {},         # step_key -> personality mode string (Req 8.1)
         "step_review_notes": {},  # step_key -> review notes string (Req 3.1)
+        "editable_contents": {},  # step_key -> EditableField instance
     }
 
     # ------------------------------------------------------------------
@@ -766,11 +768,11 @@ def create_draft_panel(
                     ui.badge(label, color=color).props("dense")
 
         def _refresh_step_sections() -> None:
-            """Update visibility/enabled state of buttons and textareas."""
+            """Update visibility/enabled state of buttons and editable fields."""
             active_key = panel_state["active_key"]
             is_running = panel_state.get("running", False)
             for key in WORKFLOW_STEP_ORDER:
-                ta = step_textareas.get(key)
+                ed = panel_state["editable_contents"].get(key)
                 rn_ta = step_review_textareas.get(key)
                 cont_btn = step_continue_btns.get(key)
                 rerun_btn = step_rerun_btns.get(key)
@@ -780,19 +782,15 @@ def create_draft_panel(
                 is_active = key == active_key
                 has_text = _has_content(panel_state["step_contents"].get(key, ""))
 
-                # Agent output textarea: ALWAYS readonly for steps 2–8 (Req 2.1)
-                # Step 9 (patent_draft) textareas remain editable (claims/description)
-                # Step 1 (initial_idea) has no textarea (None)
-                if ta is not None:
+                # Agent output editable field: frozen by default for steps 2–8 (Req 2.1)
+                # Step 9 (patent_draft) fields remain editable (claims/description)
+                if ed is not None:
                     if key not in ("initial_idea", "patent_draft"):
-                        # Steps 2–8: always readonly
-                        ta.props("readonly")
+                        # Steps 2–8: always frozen
+                        ed.toggle_freeze(True)
                     else:
-                        # Step 9: only readonly while running
-                        if is_running:
-                            ta.props("readonly")
-                        else:
-                            ta.props(remove="readonly")
+                        # Step 9: only frozen while running
+                        ed.toggle_freeze(is_running)
 
                 # Review notes textarea: readonly while running, editable otherwise (Req 3.4, 3.5)
                 if rn_ta is not None:
@@ -1122,15 +1120,19 @@ def create_draft_panel(
                         step_badge_containers[step_key] = badge_ctr
                         _render_badge(badge_ctr, step_key)
 
-                        ta = ui.textarea(
-                            label=display_name,
-                            placeholder=f"{display_name} content will appear here…",
+                        # Create editable field for content
+                        editable_content = create_editable_field(
                             value=saved_content,
-                        ).classes("w-full").props(
-                            'outlined readonly '
-                            'input-style="height: 300px; overflow-y: auto;"'
-                        ).style('background-color: #f5f5f5;')
-                        step_textareas[step_key] = ta
+                            label=display_name,
+                            readonly_label=f"{display_name} Content",
+                            on_save=lambda v, sk=step_key: _persist_step(sk, v, "completed", personality_mode=panel_state["step_modes"].get(sk, "critical")),
+                            is_frozen=True,
+                            rows=10,
+                        ).render(ui.column().classes("w-full q-mb-sm"))
+                        step_textareas[step_key] = editable_content
+
+                        # Store reference to the editable field for access in handlers
+                        panel_state["editable_contents"][step_key] = editable_content
 
                         def _make_change_handler(sk: str):
                             def handler(e: Any) -> None:
@@ -1142,8 +1144,6 @@ def create_draft_panel(
                                     else:
                                         cont.disable()
                             return handler
-
-                        ta.on("change", _make_change_handler(step_key))
 
                         # Review Notes textarea (Req 3.1–3.6)
                         review_ta = ui.textarea(
@@ -1167,11 +1167,10 @@ def create_draft_panel(
                         # Continue button
                         def _make_continue_handler(sk: str):
                             async def handler() -> None:
-                                # Read current value directly from textarea
-                                # (change event may not have fired yet)
-                                ta_el = step_textareas.get(sk)
-                                if ta_el is not None and hasattr(ta_el, 'value'):
-                                    panel_state["step_contents"][sk] = ta_el.value or ""
+                                # Read current value from editable field
+                                ed_field = panel_state["editable_contents"].get(sk)
+                                if ed_field is not None:
+                                    panel_state["step_contents"][sk] = ed_field.value or ""
                                 # Read current review notes from textarea
                                 rn_ta = step_review_textareas.get(sk)
                                 if rn_ta is not None and hasattr(rn_ta, 'value'):
