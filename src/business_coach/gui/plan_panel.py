@@ -113,7 +113,7 @@ def create_plan_panel(
                     value=content,
                     label="Section Content",
                     readonly_label=f"{section_name} Content",
-                    is_frozen=True,
+                    is_frozen=False,
                     rows=6,
                 ).render(ui.column().classes("w-full q-mb-sm"))
                 

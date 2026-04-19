@@ -52,14 +52,14 @@ def create_voices_panel(
                             value=p.name,
                             label="Persona Name",
                             readonly_label="Name",
-                            is_frozen=True,
+                            is_frozen=False,
                         ).render(ui.column().classes("w-full"))
                         
                         editable_desc = create_editable_field(
                             value=p.description,
                             label="Description",
                             readonly_label="Description",
-                            is_frozen=True,
+                            is_frozen=False,
                             rows=4,
                         ).render(ui.column().classes("w-full q-mb-sm"))
                         

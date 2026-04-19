@@ -41,7 +41,7 @@ def create_idea_panel(
             label="Describe your business idea (Problem, Solution, Target Audience, Value Prop)",
             readonly_label="Business Idea",
             on_save=lambda val: idea_repo.upsert(topic_id, val, [json.dumps(saved_sections)]),
-            is_frozen=True,
+            is_frozen=False,
             rows=6,
         ).render(ui.column().classes("w-full q-mb-md"))
         
@@ -104,7 +104,7 @@ def create_idea_panel(
                         value=s_query,
                         label="Search Query",
                         readonly_label="Search Query",
-                        is_frozen=True,
+                        is_frozen=False,
                     ).render(ui.column().classes("w-full q-mb-sm"))
                     
                     progress_log = ui.log(max_lines=10).classes("w-full h-24 q-mb-sm").style("display: none;")

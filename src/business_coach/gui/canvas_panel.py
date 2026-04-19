@@ -61,7 +61,7 @@ def create_canvas_panel(
                         value=content,
                         label="Content",
                         readonly_label=f"{element} Content",
-                        is_frozen=True,
+                        is_frozen=False,
                         rows=4,
                     ).render(editable_content_container)
                     
