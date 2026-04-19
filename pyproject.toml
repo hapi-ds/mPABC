@@ -14,22 +14,27 @@ dependencies = [
     "dspy",
     "python-docx",
     "pydantic-settings",
+    "markdown>=3.7",
     "langgraph-checkpoint-sqlite>=3.0.3",
     "pymupdf>=1.27.2.2",
     "ddgs>=9.14.0",
     "weasyprint>=68.1",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project.scripts]
 mpabs = "business_coach.main:cli"
 
 [dependency-groups]
 dev = [
+    "hatchling",
     "hypothesis",
     "pytest",
     "pytest-cov",
 ]
-
 
 [tool.uv]
 package = true
