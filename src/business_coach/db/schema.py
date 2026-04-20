@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS business_ideas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     topic_id INTEGER NOT NULL UNIQUE,
     primary_description TEXT NOT NULL,
+    is_frozen BOOLEAN NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (topic_id) REFERENCES topics(id)
 );
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS canvas_elements (
     element_name TEXT NOT NULL,
     content TEXT NOT NULL,
     user_feedback TEXT,
+    is_frozen BOOLEAN NOT NULL DEFAULT 0,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (topic_id) REFERENCES topics(id),
     UNIQUE(topic_id, element_name)
@@ -97,6 +99,7 @@ CREATE TABLE IF NOT EXISTS plan_sections (
     section_name TEXT NOT NULL,
     content TEXT NOT NULL,
     user_feedback TEXT,
+    is_frozen BOOLEAN NOT NULL DEFAULT 0,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (topic_id) REFERENCES topics(id),
     UNIQUE(topic_id, section_name)
@@ -155,6 +158,33 @@ def get_connection(database_path: Path) -> sqlite3.Connection:
     db_key = str(database_path.resolve())
     if db_key not in _initialized_databases:
         init_schema(conn)
+        
+        # Add frozen column to existing tables (if upgrading from older version)
+        add_frozen_columns(conn)
+        
         _initialized_databases.add(db_key)
 
     return conn
+
+def add_frozen_columns(conn: sqlite3.Connection) -> None:
+    """Add is_frozen column to tables if it doesn't exist (migration for v1.1)."""
+    tables_to_update = [
+        ("business_ideas", "is_frozen"),
+        ("canvas_elements", "is_frozen"),
+        ("plan_sections", "is_frozen"),
+    ]
+    
+    for table_name, column_name in tables_to_update:
+        try:
+            # Check if column exists
+            cursor = conn.execute(f"PRAGMA table_info({table_name})")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if column_name not in columns:
+                conn.execute(
+                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} BOOLEAN NOT NULL DEFAULT 0"
+                )
+        except Exception as e:
+            # Column might already exist or table might not exist
+            pass
+

@@ -77,13 +77,14 @@ def create_plan_panel(
                         previous_content="",
                         user_feedback=""
                     )
-                    plan_repo.upsert(topic_id, section_name, result, "")
                     
-                    # Update the UI component if it exists
+                    # Update the UI component if it exists and is not frozen
                     if section_name in section_components:
                         disp = section_components[section_name]["display"]
-                        disp.value = result
-                        disp.update()
+                        if not disp.is_frozen:
+                            plan_repo.upsert(topic_id, section_name, result, "")
+                            disp.value = result
+                            disp.save()
                     
                     # Show progress
                     progress = f"{idx + 1}/{len(PLAN_SECTIONS)}"

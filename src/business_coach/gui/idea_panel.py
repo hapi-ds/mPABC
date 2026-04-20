@@ -57,7 +57,7 @@ def create_idea_panel(
         
         def save_idea(sections):
             """Save generated sections to the idea repository."""
-            idea_repo.upsert(topic_id, editable_desc.value.strip(), [json.dumps(sections)])
+            idea_repo.upsert(topic_id, editable_desc.value.strip(), [json.dumps(sections)], editable_desc.is_frozen)
         
         async def generate_sections():
             idea = editable_desc.value.strip()

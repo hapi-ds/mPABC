@@ -87,9 +87,9 @@ def create_canvas_panel(
                                     element_name=el_name,
                                     previous_content=content_field.value,
                                     user_feedback=f_in.value
-                                )
+                                 )
                                 content_field.value = result
-                                canvas_rel_repo.upsert(topic_id, el_name, result, f_in.value)
+                                canvas_rel_repo.upsert(topic_id, el_name, result, f_in.value, content_field.is_frozen)
                                 ui.notify(f"{el_name} updated.", type="positive")
                             except Exception as e:
                                 ui.notify(f"Failed to generate {el_name}: {e}", type="negative")

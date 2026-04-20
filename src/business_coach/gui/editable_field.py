@@ -25,8 +25,13 @@ class EditableField:
         readonly_label: Label to show when field is read-only (frozen)
         on_change: Optional callback when value changes
         on_save: Optional callback when save button is clicked
-        is_frozen: Whether the field starts in frozen state
+        is_frozen: Whether the field starts in frozen state (default False = editable initially)
         rows: Number of rows for textarea (default 6)
+    
+    When frozen, the field:
+    - Shows as read-only markdown display with no Edit or Save buttons
+    - Cannot be modified by user or LLM operations
+    - Represents final content that user is satisfied with
     """
     
     def __init__(
@@ -78,6 +83,10 @@ class EditableField:
         if not self._container:
             return
             
+        # Capture current value before clearing refs when switching to editable
+        if not is_frozen and self._display_ref:
+            self._value = self._display_ref.content
+        
         # Clear the container and rebuild
         self._editor_ref = None
         self._display_ref = None
@@ -91,10 +100,32 @@ class EditableField:
 
     def save(self) -> None:
         """Save current value and notify."""
+        # Don't allow saving when frozen
+        if self.is_frozen:
+            return
+            
         current_value = self.value
+        # Sync _value with editor's current value before rebuilding
+        self._value = current_value
+        
         if self.on_save:
             self.on_save(current_value)
+        
+        # Show notification before rebuilding (notification needs context)
         ui.notify("Changes saved", type="positive")
+        
+        # Rebuild as read-only view with rendered content
+        if not self._container:
+            return
+        
+        # Clear refs and rebuild read-only view
+        self.is_frozen = True
+        self._editor_ref = None
+        self._display_ref = None
+        
+        with self._container:
+            self._container.clear()
+            self._build_readonly_view()
         
     def _build_editable_view(self) -> None:
         """Build the editable view with editor, freeze toggle, and save button."""
@@ -123,11 +154,13 @@ class EditableField:
                     lambda e: self.toggle_freeze(e.value)
                 )
                 
-                self._save_btn = ui.button(
-                    "Save",
-                    icon="save",
-                    on_click=self.save,
-                ).props("color=primary")
+                # Save button only visible when not frozen
+                if not self.is_frozen:
+                    self._save_btn = ui.button(
+                        "Save",
+                        icon="save",
+                        on_click=self.save,
+                    ).props("color=primary")
     
     def _build_readonly_view(self) -> None:
         """Build the read-only view with markdown display and edit toggle."""
@@ -137,16 +170,19 @@ class EditableField:
             self._display_ref = ui.markdown(self._value).classes("w-full p-4 bg-grey-1 rounded")
             
             with ui.row().classes("w-full items-center justify-between q-mt-sm"):
+                # Frozen toggle always shows True when in read-only
                 self._frozen_toggle = ui.checkbox(
-                    "Freeze (prevent changes until unchecked)",
+                    "Frozen (final state)",
                     value=True,
                 ).props("color=warning disabled")
                 
-                self._edit_btn = ui.button(
-                    "Edit",
-                    icon="edit",
-                    on_click=self._switch_to_editable,
-                ).props("color=secondary")
+                # Edit button only visible when NOT frozen
+                if not self.is_frozen:
+                    self._edit_btn = ui.button(
+                        "Edit",
+                        icon="edit",
+                        on_click=self._switch_to_editable,
+                    ).props("color=secondary")
     
     def _switch_to_editable(self) -> None:
         """Switch from readonly to editable view."""

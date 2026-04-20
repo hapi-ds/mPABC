@@ -223,16 +223,16 @@ class BusinessIdeaRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def upsert(self, topic_id: int, primary_description: str, search_terms: list[str]) -> int:
+    def upsert(self, topic_id: int, primary_description: str, search_terms: list[str], is_frozen: bool = False) -> int:
         try:
             cursor = self._conn.cursor()
             cursor.execute("BEGIN")
 
             cursor.execute(
                 """INSERT OR REPLACE INTO business_ideas
-                   (topic_id, primary_description)
-                   VALUES (?, ?)""",
-                (topic_id, primary_description),
+                   (topic_id, primary_description, is_frozen)
+                   VALUES (?, ?, ?)""",
+                (topic_id, primary_description, is_frozen),
             )
             idea_id: int = cursor.lastrowid  # type: ignore
 
@@ -258,7 +258,7 @@ class BusinessIdeaRepository:
     def get_by_topic(self, topic_id: int) -> dict | None:
         try:
             row = self._conn.execute(
-                """SELECT id, primary_description
+                """SELECT id, primary_description, is_frozen
                    FROM business_ideas WHERE topic_id = ?""",
                 (topic_id,),
             ).fetchone()
@@ -275,6 +275,7 @@ class BusinessIdeaRepository:
             return {
                 "id": idea_id,
                 "primary_description": row[1],
+                "is_frozen": bool(row[2]),
                 "search_terms": [r[0] for r in term_rows],
             }
         except sqlite3.Error as exc:
@@ -288,17 +289,18 @@ class CanvasElementRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def upsert(self, topic_id: int, element_name: str, content: str, user_feedback: str | None = None) -> None:
+    def upsert(self, topic_id: int, element_name: str, content: str, user_feedback: str | None = None, is_frozen: bool = False) -> None:
         try:
             self._conn.execute(
                 """INSERT INTO canvas_elements
-                   (topic_id, element_name, content, user_feedback, last_updated)
-                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                   (topic_id, element_name, content, user_feedback, is_frozen, last_updated)
+                   VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                    ON CONFLICT(topic_id, element_name) DO UPDATE SET
                    content=excluded.content,
                    user_feedback=excluded.user_feedback,
+                   is_frozen=excluded.is_frozen,
                    last_updated=CURRENT_TIMESTAMP""",
-                (topic_id, element_name, content, user_feedback),
+                (topic_id, element_name, content, user_feedback, is_frozen),
             )
             self._conn.commit()
         except sqlite3.Error as exc:
@@ -307,7 +309,7 @@ class CanvasElementRepository:
 
     def get_by_topic(self, topic_id: int) -> list[CanvasElement]:
         rows = self._conn.execute(
-            """SELECT id, topic_id, element_name, content, user_feedback, last_updated
+            """SELECT id, topic_id, element_name, content, user_feedback, is_frozen, last_updated
                FROM canvas_elements WHERE topic_id = ?""",
             (topic_id,),
         ).fetchall()
@@ -318,14 +320,15 @@ class CanvasElementRepository:
                 element_name=r[2],
                 content=r[3],
                 user_feedback=r[4],
-                last_updated=_parse_timestamp(r[5])
+                is_frozen=bool(r[5]),
+                last_updated=_parse_timestamp(r[6])
             )
             for r in rows
         ]
 
     def get_element(self, topic_id: int, element_name: str) -> CanvasElement | None:
         row = self._conn.execute(
-            """SELECT id, topic_id, element_name, content, user_feedback, last_updated
+            """SELECT id, topic_id, element_name, content, user_feedback, is_frozen, last_updated
                FROM canvas_elements WHERE topic_id = ? AND element_name = ?""",
             (topic_id, element_name),
         ).fetchone()
@@ -333,7 +336,7 @@ class CanvasElementRepository:
             return None
         return CanvasElement(
             id=row[0], topic_id=row[1], element_name=row[2],
-            content=row[3], user_feedback=row[4], last_updated=_parse_timestamp(row[5])
+            content=row[3], user_feedback=row[4], is_frozen=bool(row[5]), last_updated=_parse_timestamp(row[6])
         )
 
 
@@ -399,17 +402,18 @@ class PlanSectionRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def upsert(self, topic_id: int, section_name: str, content: str, user_feedback: str | None = None) -> None:
+    def upsert(self, topic_id: int, section_name: str, content: str, user_feedback: str | None = None, is_frozen: bool = False) -> None:
         try:
             self._conn.execute(
                 """INSERT INTO plan_sections
-                   (topic_id, section_name, content, user_feedback, last_updated)
-                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                   (topic_id, section_name, content, user_feedback, is_frozen, last_updated)
+                   VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                    ON CONFLICT(topic_id, section_name) DO UPDATE SET
                    content=excluded.content,
                    user_feedback=excluded.user_feedback,
+                   is_frozen=excluded.is_frozen,
                    last_updated=CURRENT_TIMESTAMP""",
-                (topic_id, section_name, content, user_feedback),
+                (topic_id, section_name, content, user_feedback, is_frozen),
             )
             self._conn.commit()
         except sqlite3.Error as exc:
@@ -418,21 +422,21 @@ class PlanSectionRepository:
 
     def get_by_topic(self, topic_id: int) -> list[PlanSection]:
         rows = self._conn.execute(
-            """SELECT id, topic_id, section_name, content, user_feedback, last_updated
+            """SELECT id, topic_id, section_name, content, user_feedback, is_frozen, last_updated
                FROM plan_sections WHERE topic_id = ?""",
             (topic_id,),
         ).fetchall()
         return [
             PlanSection(
                 id=r[0], topic_id=r[1], section_name=r[2],
-                content=r[3], user_feedback=r[4], last_updated=_parse_timestamp(r[5])
+                content=r[3], user_feedback=r[4], is_frozen=bool(r[5]), last_updated=_parse_timestamp(r[6])
             )
             for r in rows
         ]
 
     def get_section(self, topic_id: int, section_name: str) -> PlanSection | None:
         row = self._conn.execute(
-            """SELECT id, topic_id, section_name, content, user_feedback, last_updated
+            """SELECT id, topic_id, section_name, content, user_feedback, is_frozen, last_updated
                FROM plan_sections WHERE topic_id = ? AND section_name = ?""",
             (topic_id, section_name),
         ).fetchone()
@@ -440,7 +444,7 @@ class PlanSectionRepository:
             return None
         return PlanSection(
             id=row[0], topic_id=row[1], section_name=row[2],
-            content=row[3], user_feedback=row[4], last_updated=_parse_timestamp(row[5])
+            content=row[3], user_feedback=row[4], is_frozen=bool(row[5]), last_updated=_parse_timestamp(row[6])
         )
 
 
