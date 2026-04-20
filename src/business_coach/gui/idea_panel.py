@@ -40,7 +40,6 @@ def create_idea_panel(
             value=desc,
             label="Describe your business idea (Problem, Solution, Target Audience, Value Prop)",
             readonly_label="Business Idea",
-            on_save=lambda val: idea_repo.upsert(topic_id, val, [json.dumps(saved_sections)]),
             is_frozen=False,
             rows=6,
         ).render(ui.column().classes("w-full q-mb-md"))
@@ -55,6 +54,10 @@ def create_idea_panel(
         
         # We'll store the run handlers so we can run them all
         run_handlers = []
+        
+        def save_idea(sections):
+            """Save generated sections to the idea repository."""
+            idea_repo.upsert(topic_id, editable_desc.value.strip(), [json.dumps(sections)])
         
         async def generate_sections():
             idea = editable_desc.value.strip()
