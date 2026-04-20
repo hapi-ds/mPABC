@@ -36,10 +36,15 @@ def create_idea_panel(
         except Exception:
             saved_sections = []
             
+        def save_idea_freeze_state(is_frozen: bool) -> None:
+            """Save idea description with frozen state."""
+            idea_repo.upsert(topic_id, editable_desc.value.strip(), [json.dumps(saved_sections)], is_frozen)
+        
         editable_desc = create_editable_field(
             value=desc,
             label="Describe your business idea (Problem, Solution, Target Audience, Value Prop)",
             readonly_label="Business Idea",
+            on_freeze=save_idea_freeze_state,
             is_frozen=False,
             rows=6,
         ).render(ui.column().classes("w-full q-mb-md"))

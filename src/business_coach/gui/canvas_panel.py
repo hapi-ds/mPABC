@@ -57,19 +57,44 @@ def create_canvas_panel(
                     feedback = existing.user_feedback if existing and existing.user_feedback else ""
                     
                     editable_content_container = ui.column().classes("w-full q-mb-sm")
+                    
+                    def save_freeze_state(is_frozen: bool, el_name=element) -> None:
+                        """Save canvas element with frozen state."""
+                        logger.debug(f"save_freeze_state called for {el_name} with is_frozen={is_frozen}")
+                        current_value = editable_content.value if editable_content else ""
+                        try:
+                            canvas_rel_repo.upsert(topic_id, el_name, current_value, 
+                                editable_feedback.value if editable_feedback else "", is_frozen)
+                            logger.debug(f"Successfully saved freeze state for {el_name}")
+                        except Exception as e:
+                            logger.exception(f"Failed to save freeze state for {el_name}: {e}")
+                    
                     editable_content = create_editable_field(
                         value=content,
                         label="Content",
                         readonly_label=f"{element} Content",
+                        on_freeze=save_freeze_state,
                         is_frozen=False,
                         rows=4,
                     ).render(editable_content_container)
                     
                     editable_feedback_container = ui.column().classes("w-full q-mb-sm")
+                    
+                    def save_feedback_freeze_state(is_frozen: bool, el_name=f"{element} Feedback") -> None:
+                        """Save feedback field with frozen state."""
+                        logger.debug(f"save_feedback_freeze_state called for {el_name} with is_frozen={is_frozen}")
+                        try:
+                            canvas_rel_repo.upsert(topic_id, el_name, 
+                                editable_feedback.value if editable_feedback else "", None, is_frozen)
+                            logger.debug(f"Successfully saved feedback freeze state for {el_name}")
+                        except Exception as e:
+                            logger.exception(f"Failed to save feedback freeze state for {el_name}: {e}")
+                    
                     editable_feedback = create_editable_field(
                         value=feedback,
                         label="Feedback / Review Notes",
                         readonly_label="Review Notes",
+                        on_freeze=save_feedback_freeze_state,
                         is_frozen=False,
                         rows=2,
                     ).render(editable_feedback_container)

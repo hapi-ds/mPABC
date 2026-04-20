@@ -25,6 +25,7 @@ class EditableField:
         readonly_label: Label to show when field is read-only (frozen)
         on_change: Optional callback when value changes
         on_save: Optional callback when save button is clicked
+        on_freeze: Optional callback when freeze state changes (receives bool: is_frozen)
         is_frozen: Whether the field starts in frozen state (default False = editable initially)
         rows: Number of rows for textarea (default 6)
     
@@ -41,6 +42,7 @@ class EditableField:
         readonly_label: str = "Read-only content",
         on_change: Optional[Callable[[str], None]] = None,
         on_save: Optional[Callable[[str], None]] = None,
+        on_freeze: Optional[Callable[[bool], None]] = None,
         is_frozen: bool = False,
         rows: int = 6,
     ):
@@ -49,6 +51,7 @@ class EditableField:
         self.readonly_label = readonly_label
         self.on_change = on_change
         self.on_save = on_save
+        self.on_freeze = on_freeze
         self.is_frozen = is_frozen
         self.rows = rows
         
@@ -78,7 +81,19 @@ class EditableField:
     
     def toggle_freeze(self, is_frozen: bool) -> None:
         """Toggle between frozen and editable states."""
+        logger.debug(f"toggle_freeze called with is_frozen={is_frozen}")
         self.is_frozen = is_frozen
+        
+        # Notify callback of freeze state change (DB persistence)
+        if self.on_freeze:
+            try:
+                logger.debug(f"Calling on_freeze callback with is_frozen={is_frozen}")
+                self.on_freeze(is_frozen)
+                logger.debug("on_freeze callback completed")
+            except Exception as e:
+                logger.exception("Failed to notify freeze state change")
+        else:
+            logger.warning("on_freeze callback not set - cannot persist freeze state")
         
         if not self._container:
             return
@@ -87,7 +102,7 @@ class EditableField:
         if not is_frozen and self._display_ref:
             self._value = self._display_ref.content
         
-        # Clear the container and rebuild
+        # Clear the container and rebuild (this updates UI)
         self._editor_ref = None
         self._display_ref = None
         
@@ -119,7 +134,7 @@ class EditableField:
             return
         
         # Clear refs and rebuild read-only view
-        self.is_frozen = True
+        #self.is_frozen = True
         self._editor_ref = None
         self._display_ref = None
         
@@ -211,6 +226,7 @@ def create_editable_field(
     readonly_label: str = "Read-only content",
     on_change: Optional[Callable[[str], None]] = None,
     on_save: Optional[Callable[[str], None]] = None,
+    on_freeze: Optional[Callable[[bool], None]] = None,
     is_frozen: bool = False,
     rows: int = 6,
 ) -> EditableField:
@@ -222,6 +238,7 @@ def create_editable_field(
         readonly_label: Label for read-only view
         on_change: Callback when value changes
         on_save: Callback when saved
+        on_freeze: Callback when freeze state changes (receives bool: is_frozen)
         is_frozen: Start in frozen state
         rows: Textarea rows
         
@@ -234,7 +251,10 @@ def create_editable_field(
         readonly_label=readonly_label,
         on_change=on_change,
         on_save=on_save,
+        on_freeze=on_freeze,
         is_frozen=is_frozen,
         rows=rows,
     )
     return field
+
+

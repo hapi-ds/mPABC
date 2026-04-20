@@ -110,18 +110,41 @@ def create_plan_panel(
                 content = existing.content if existing else ""
                 feedback = existing.user_feedback if existing and existing.user_feedback else ""
                 
+                def save_section_freeze_state(is_frozen: bool, sn=section_name) -> None:
+                    """Save plan section with frozen state."""
+                    logger.debug(f"save_section_freeze_state called for {sn} with is_frozen={is_frozen}")
+                    current_content = editable_content.value if editable_content else ""
+                    try:
+                        plan_repo.upsert(topic_id, sn, current_content,
+                            editable_feedback.value if editable_feedback else "", is_frozen)
+                        logger.debug(f"Successfully saved section freeze state for {sn}")
+                    except Exception as e:
+                        logger.exception(f"Failed to save section freeze state for {sn}: {e}")
+                
                 editable_content = create_editable_field(
                     value=content,
                     label="Section Content",
                     readonly_label=f"{section_name} Content",
+                    on_freeze=save_section_freeze_state,
                     is_frozen=False,
                     rows=6,
                 ).render(ui.column().classes("w-full q-mb-sm"))
+                
+                def save_feedback_freeze_state(is_frozen: bool, sn=f"{section_name} Feedback") -> None:
+                    """Save feedback with frozen state."""
+                    logger.debug(f"save_feedback_freeze_state called for {sn} with is_frozen={is_frozen}")
+                    try:
+                        plan_repo.upsert(topic_id, sn, 
+                            editable_feedback.value if editable_feedback else "", None, is_frozen)
+                        logger.debug(f"Successfully saved feedback freeze state for {sn}")
+                    except Exception as e:
+                        logger.exception(f"Failed to save feedback freeze state for {sn}: {e}")
                 
                 editable_feedback = create_editable_field(
                     value=feedback,
                     label="Feedback / Review Notes",
                     readonly_label="Review Notes",
+                    on_freeze=save_feedback_freeze_state,
                     is_frozen=False,
                     rows=2,
                 ).render(ui.column().classes("w-full q-mb-sm"))
