@@ -283,7 +283,7 @@ class EditableField:
         self._editor_ref = ui.textarea(
             value=self._value,
             label="Edit content",
-        ).classes("w-full").props(f"outlined rows={self.rows}")
+        ).classes("w-full").props(f"outlined autogrow rows={max(self.rows, 12)}")
 
         with ui.row().classes("w-full items-center justify-between q-mt-sm"):
             self._freeze_toggle_ref = ui.switch(
