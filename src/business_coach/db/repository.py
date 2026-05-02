@@ -554,3 +554,63 @@ class PersonalityPreferenceRepository:
         except sqlite3.Error as exc:
             log_db_error(logger, "SELECT", "personality_preferences", str(exc))
             raise
+
+
+class SpecialistOverrideRepository:
+    """CRUD operations for specialist persona overrides."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def save(self, topic_id: int, section_name: str, specialist_id: str) -> None:
+        """Save or update a specialist override for a section within a topic."""
+        try:
+            self._conn.execute(
+                """INSERT INTO specialist_overrides
+                   (topic_id, section_name, specialist_id)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(topic_id, section_name) DO UPDATE SET
+                   specialist_id=excluded.specialist_id,
+                   updated_at=CURRENT_TIMESTAMP""",
+                (topic_id, section_name, specialist_id),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            log_db_error(logger, "UPSERT", "specialist_overrides", str(exc))
+            raise
+
+    def get_override(self, topic_id: int, section_name: str) -> str | None:
+        """Get the specialist override ID for a section, or None if not set."""
+        try:
+            row = self._conn.execute(
+                "SELECT specialist_id FROM specialist_overrides WHERE topic_id = ? AND section_name = ?",
+                (topic_id, section_name),
+            ).fetchone()
+            return row[0] if row else None
+        except sqlite3.Error as exc:
+            log_db_error(logger, "SELECT", "specialist_overrides", str(exc))
+            raise
+
+    def get_all_overrides(self, topic_id: int) -> dict[str, str]:
+        """Get all specialist overrides for a topic as {section_name: specialist_id}."""
+        try:
+            rows = self._conn.execute(
+                "SELECT section_name, specialist_id FROM specialist_overrides WHERE topic_id = ?",
+                (topic_id,),
+            ).fetchall()
+            return {r[0]: r[1] for r in rows}
+        except sqlite3.Error as exc:
+            log_db_error(logger, "SELECT", "specialist_overrides", str(exc))
+            raise
+
+    def delete(self, topic_id: int, section_name: str) -> None:
+        """Remove a specialist override, reverting to the registry default."""
+        try:
+            self._conn.execute(
+                "DELETE FROM specialist_overrides WHERE topic_id = ? AND section_name = ?",
+                (topic_id, section_name),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            log_db_error(logger, "DELETE", "specialist_overrides", str(exc))
+            raise

@@ -127,6 +127,16 @@ CREATE TABLE IF NOT EXISTS personality_preferences (
     FOREIGN KEY (topic_id) REFERENCES topics(id),
     UNIQUE(topic_id, agent_name)
 );
+
+CREATE TABLE IF NOT EXISTS specialist_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_id INTEGER NOT NULL,
+    section_name TEXT NOT NULL,
+    specialist_id TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (topic_id) REFERENCES topics(id),
+    UNIQUE(topic_id, section_name)
+);
 """
 
 _initialized_databases: set[str] = set()

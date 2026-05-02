@@ -11,7 +11,9 @@ from business_coach.db.repository import (
     PersonalityPreferenceRepository,
     ResearchSessionRepository,
     WebSearchRepository,
+    SpecialistOverrideRepository,
 )
+from business_coach.agents.specialists import SPECIALIST_REGISTRY, get_specialist
 from business_coach.export.docx_exporter import DOCXExporter
 from business_coach.export.latex_exporter import (
     export_canvas_latex,
@@ -299,6 +301,55 @@ def create_settings_panel(
             on_change=on_personality_change,
             label="Personality Mode",
         ).classes("w-64")
+        
+        ui.separator().classes("w-full q-my-lg")
+        
+        # Specialist Assignments Section
+        ui.label("Specialist Assignments").classes("text-h6 font-bold q-mb-sm")
+        ui.label("View or override the AI specialist for each section.").classes("text-body2 q-mb-sm")
+        
+        override_repo = SpecialistOverrideRepository(conn)
+        overrides = override_repo.get_all_overrides(topic_id)
+        
+        # Build specialist options: id -> role_title, plus a default option
+        specialist_options = {"__default__": "Default (from registry)"}
+        for persona in SPECIALIST_REGISTRY.values():
+            specialist_options[persona.id] = persona.role_title
+        
+        # All sections: canvas elements + plan sections + voice_personas
+        all_sections = [
+            "Key Partners", "Key Activities", "Key Resources",
+            "Value Propositions", "Customer Relationships", "Channels",
+            "Customer Segments", "Cost Structure", "Revenue Streams",
+            "Executive Summary", "Company Description", "Market Analysis",
+            "Organization & Management", "Service or Product Line",
+            "Marketing & Sales", "Funding Request", "Financial Projections", "Appendix",
+            "voice_personas",
+        ]
+        
+        for section_name in all_sections:
+            default_specialist = get_specialist(section_name)
+            current_id = overrides.get(section_name, "__default__")
+            
+            def make_on_change(sec=section_name):
+                def on_change(e):
+                    if e.value == "__default__":
+                        override_repo.delete(topic_id, sec)
+                        ui.notify(f"Reset {sec} to default specialist", type="info")
+                    else:
+                        override_repo.save(topic_id, sec, e.value)
+                        ui.notify(f"Set {sec} specialist to {specialist_options[e.value]}", type="positive")
+                return on_change
+            
+            with ui.row().classes("w-full items-center gap-2"):
+                ui.label(section_name).classes("w-48 font-medium")
+                ui.label(f"Default: {default_specialist.role_title}").classes("text-grey text-sm w-64")
+                ui.select(
+                    options=specialist_options,
+                    value=current_id,
+                    on_change=make_on_change(),
+                    label="Override",
+                ).classes("w-64")
         
         ui.separator().classes("w-full q-my-lg")
         ui.label("App Settings").classes("text-h6 font-bold q-mb-sm")

@@ -6,7 +6,8 @@ import sqlite3
 from business_coach.dspy_modules.modules import BusinessCanvasGenerator, VoicePersonaGenerator, PlanSectionGenerator, SearchSectionGenerator, SearchResultScorer
 from business_coach.parsers.web_search import search_web
 from business_coach.rag.embeddings import EmbeddingService
-from business_coach.db.repository import WebSearchRepository, ResearchSessionRepository, PersonalityPreferenceRepository
+from business_coach.db.repository import WebSearchRepository, ResearchSessionRepository, PersonalityPreferenceRepository, SpecialistOverrideRepository
+from business_coach.agents.specialists import get_specialist, SPECIALIST_REGISTRY, SpecialistPersona
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,67 @@ def _get_personality_prompt(topic_id: int, conn: sqlite3.Connection) -> str:
             topic_id,
         )
         return PERSONALITY_PROMPTS["Balanced"]
+
+def _resolve_specialist(
+    section_name: str,
+    topic_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> SpecialistPersona:
+    """Resolve the specialist persona for a section, checking overrides first.
+
+    Args:
+        section_name: The canvas element or plan section name.
+        topic_id: Optional topic ID for override lookup.
+        conn: Optional SQLite connection for override lookup.
+
+    Returns:
+        The resolved SpecialistPersona (override > registry > fallback).
+    """
+    if topic_id is not None and conn is not None:
+        try:
+            repo = SpecialistOverrideRepository(conn)
+            override_id = repo.get_override(topic_id, section_name)
+            if override_id is not None:
+                # Look up the specialist by ID in the registry
+                for persona in SPECIALIST_REGISTRY.values():
+                    if persona.id == override_id:
+                        return persona
+                # Override references a non-existent specialist
+                logger.warning(
+                    "Override for topic %d section '%s' references unknown specialist '%s', "
+                    "falling back to default",
+                    topic_id, section_name, override_id,
+                )
+        except Exception:
+            logger.exception(
+                "Failed to read specialist override for topic %d section '%s'",
+                topic_id, section_name,
+            )
+    return get_specialist(section_name)
+
+
+def _compose_prompt(
+    topic_id: int | None,
+    conn: sqlite3.Connection | None,
+    section_name: str,
+) -> str:
+    """Build the composed prompt: personality + specialist.
+
+    Args:
+        topic_id: The topic ID (for personality and override lookup).
+        conn: SQLite connection.
+        section_name: The section name to resolve the specialist for.
+
+    Returns:
+        The full composed prompt string.
+    """
+    personality = PERSONALITY_PROMPTS["Balanced"]  # default
+    if topic_id is not None and conn is not None:
+        personality = _get_personality_prompt(topic_id, conn)
+
+    specialist = _resolve_specialist(section_name, topic_id, conn)
+    return f"{personality}\n\n{specialist.system_prompt}"
+
 
 def generate_search_sections(business_idea: str, user_feedback: str = "") -> list[dict]:
     """Generate search sections using LLM."""
@@ -172,12 +234,11 @@ def generate_canvas_element(
         Generated content string for the canvas element.
     """
     signature = BusinessCanvasGenerator
-    if conn is not None and topic_id is not None:
-        personality_prompt = _get_personality_prompt(topic_id, conn)
-        original_instructions = signature.__doc__ or ""
-        signature = signature.with_instructions(
-            f"{personality_prompt}\n\n{original_instructions}"
-        )
+    composed = _compose_prompt(topic_id, conn, element_name)
+    original_instructions = signature.__doc__ or ""
+    signature = signature.with_instructions(
+        f"{composed}\n\n{original_instructions}"
+    )
 
     agent = dspy.Predict(signature)
     try:
@@ -211,12 +272,11 @@ def generate_voice_personas(
         List of persona dicts with 'name', 'description', 'communication_style'.
     """
     signature = VoicePersonaGenerator
-    if conn is not None and topic_id is not None:
-        personality_prompt = _get_personality_prompt(topic_id, conn)
-        original_instructions = signature.__doc__ or ""
-        signature = signature.with_instructions(
-            f"{personality_prompt}\n\n{original_instructions}"
-        )
+    composed = _compose_prompt(topic_id, conn, "voice_personas")
+    original_instructions = signature.__doc__ or ""
+    signature = signature.with_instructions(
+        f"{composed}\n\n{original_instructions}"
+    )
 
     agent = dspy.Predict(signature)
     try:
@@ -264,12 +324,11 @@ def generate_plan_section(
         Generated content string for the plan section.
     """
     signature = PlanSectionGenerator
-    if conn is not None and topic_id is not None:
-        personality_prompt = _get_personality_prompt(topic_id, conn)
-        original_instructions = signature.__doc__ or ""
-        signature = signature.with_instructions(
-            f"{personality_prompt}\n\n{original_instructions}"
-        )
+    composed = _compose_prompt(topic_id, conn, section_name)
+    original_instructions = signature.__doc__ or ""
+    signature = signature.with_instructions(
+        f"{composed}\n\n{original_instructions}"
+    )
 
     agent = dspy.Predict(signature)
     try:

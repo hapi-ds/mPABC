@@ -21,6 +21,7 @@ EXPECTED_TABLES = {
     "plan_sections",
     "workflow_steps",
     "personality_preferences",
+    "specialist_overrides",
 }
 
 
