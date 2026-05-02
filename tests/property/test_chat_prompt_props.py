@@ -14,11 +14,8 @@ from business_coach.gui.chat_panel import build_chat_prompt
 # Strategies
 # ---------------------------------------------------------------------------
 
-# A single RAG context document with a non-empty "text" field
-_context_doc = st.fixed_dictionaries({"text": st.text(min_size=1)})
-
-# A list of context documents (0 to 10 items)
-_context_docs = st.lists(_context_doc, min_size=0, max_size=10)
+# An invention context dict with a non-empty "primary_description" field
+_invention_context = st.fixed_dictionaries({"primary_description": st.text(min_size=1)})
 
 # Non-empty user question
 _question = st.text(min_size=1)
@@ -33,39 +30,38 @@ _question = st.text(min_size=1)
 class TestChatPromptContainsContextAndQuestion:
     """Property 7: Chat prompt contains context and question.
 
-    For any list of RAG context documents (each with a "text" field) and
+    For any invention context dict (with a "primary_description" field) and
     any non-empty user question string, the prompt constructed by the chat
-    panel shall contain the user question text and shall contain the text
-    from each context document.
+    panel shall contain the user question text and shall contain the
+    primary_description from the context when provided.
 
     **Validates: Requirements 5.2**
     """
 
-    @given(context_docs=_context_docs, question=_question)
+    @given(context=_invention_context, question=_question)
     @settings(max_examples=100)
     def test_prompt_contains_question(
         self,
-        context_docs: list[dict],
+        context: dict,
         question: str,
     ) -> None:
         """The constructed prompt always contains the user question."""
-        prompt = build_chat_prompt(context_docs, question)
+        prompt = build_chat_prompt(question, invention_context=context)
         assert question in prompt
 
     @given(
-        context_docs=st.lists(_context_doc, min_size=1, max_size=10),
+        context=_invention_context,
         question=_question,
     )
     @settings(max_examples=100)
     def test_prompt_contains_all_context_texts(
         self,
-        context_docs: list[dict],
+        context: dict,
         question: str,
     ) -> None:
-        """The constructed prompt contains the text from every context document."""
-        prompt = build_chat_prompt(context_docs, question)
-        for doc in context_docs:
-            assert doc["text"] in prompt
+        """The constructed prompt contains the primary_description from context."""
+        prompt = build_chat_prompt(question, invention_context=context)
+        assert context["primary_description"] in prompt
 
     @given(question=_question)
     @settings(max_examples=100)
@@ -73,7 +69,6 @@ class TestChatPromptContainsContextAndQuestion:
         self,
         question: str,
     ) -> None:
-        """When no context documents are provided, the prompt still contains the question."""
-        prompt = build_chat_prompt([], question)
+        """When no context is provided, the prompt still contains the question."""
+        prompt = build_chat_prompt(question)
         assert question in prompt
-        assert "no prior art context" in prompt.lower()

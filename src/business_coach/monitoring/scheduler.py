@@ -15,12 +15,7 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 from business_coach.agents.prior_art_search import prior_art_search_node
-from business_coach.db.models import PatentRecord
-from business_coach.db.repository import (
-    PatentRepository,
-    ResearchSessionRepository,
-    TopicRepository,
-)
+from business_coach.db.repository import TopicRepository
 
 if TYPE_CHECKING:
     from business_coach.rag.engine import RAGEngine
@@ -192,10 +187,6 @@ class MonitoringScheduler:
         # Run the real prior art search
         result = prior_art_search_node(state, rag_engine=self._rag_engine)
 
-        # Store results in DB if a connection is available
-        if self._conn is not None:
-            self._store_results(topic_id, result)
-
         logger.info(
             "Search cycle: topic %s completed — %d results, %d failed sources",
             topic_id,
@@ -222,32 +213,4 @@ class MonitoringScheduler:
         # Use the topic name as a minimal disclosure context
         return {"technical_problem": topic.name, "novel_features": [], "implementation_details": ""}
 
-    def _store_results(self, topic_id: int, result: dict[str, Any]) -> None:
-        """Persist prior art search results to the database."""
-        prior_art = result.get("prior_art_results", [])
-        if not prior_art:
-            return
 
-        session_repo = ResearchSessionRepository(self._conn)  # type: ignore[arg-type]
-        patent_repo = PatentRepository(self._conn)  # type: ignore[arg-type]
-
-        # Create a research session for this monitoring cycle
-        session_id = session_repo.create(topic_id, query="monitoring_cycle")
-
-        for record_dict in prior_art:
-            try:
-                patent_record = PatentRecord(
-                    session_id=session_id,
-                    patent_number=record_dict.get("patent_number", record_dict.get("doi", "UNKNOWN")),
-                    title=record_dict.get("title", "Untitled"),
-                    abstract=record_dict.get("abstract", ""),
-                    source=record_dict.get("source", "unknown"),
-                )
-                patent_repo.create(session_id, patent_record)
-            except Exception:
-                logger.warning(
-                    "Failed to store record for topic %s: %s",
-                    topic_id,
-                    record_dict.get("title", "unknown"),
-                    exc_info=True,
-                )

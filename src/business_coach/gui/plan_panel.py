@@ -1,11 +1,14 @@
 import asyncio
+import logging
 import sqlite3
 from nicegui import ui
 from business_coach.db.repository import (
     BusinessIdeaRepository, CanvasElementRepository, VoicePersonaRepository, PlanSectionRepository, ChatHistoryRepository
 )
 from business_coach.agents.workflow import generate_plan_section
-from business_coach.gui.editable_field import create_editable_field
+from business_coach.gui.editable_field import EditableField
+
+logger = logging.getLogger(__name__)
 
 PLAN_SECTIONS = [
     "Executive Summary", "Company Description", "Market Analysis",
@@ -59,7 +62,7 @@ def create_plan_panel(
         personas_text = "\n".join([f"{p.name}: {p.description} ({p.communication_style})" for p in personas])
         
         # Store component references so run_all can update them
-        section_components = {}
+        section_fields = {}
         
         async def run_all_sections():
             if header_spinner and header_status_label:
@@ -79,12 +82,11 @@ def create_plan_panel(
                     )
                     
                     # Update the UI component if it exists and is not frozen
-                    if section_name in section_components:
-                        disp = section_components[section_name]["display"]
-                        if not disp.is_frozen:
+                    if section_name in section_fields:
+                        field = section_fields[section_name]
+                        if not field.is_frozen:
                             plan_repo.upsert(topic_id, section_name, result, "")
-                            disp.value = result
-                            disp.save()
+                            field.value = result
                     
                     # Show progress
                     progress = f"{idx + 1}/{len(PLAN_SECTIONS)}"
@@ -110,53 +112,24 @@ def create_plan_panel(
                 content = existing.content if existing else ""
                 feedback = existing.user_feedback if existing and existing.user_feedback else ""
                 
-                def save_section_freeze_state(is_frozen: bool, sn=section_name) -> None:
-                    """Save plan section with frozen state."""
-                    logger.debug(f"save_section_freeze_state called for {sn} with is_frozen={is_frozen}")
-                    current_content = editable_content.value if editable_content else ""
-                    try:
-                        plan_repo.upsert(topic_id, sn, current_content,
-                            editable_feedback.value if editable_feedback else "", is_frozen)
-                        logger.debug(f"Successfully saved section freeze state for {sn}")
-                    except Exception as e:
-                        logger.exception(f"Failed to save section freeze state for {sn}: {e}")
-                
-                editable_content = create_editable_field(
-                    value=content,
-                    label="Section Content",
-                    readonly_label=f"{section_name} Content",
-                    on_freeze=save_section_freeze_state,
-                    is_frozen=False,
-                    rows=6,
-                ).render(ui.column().classes("w-full q-mb-sm"))
-                
-                def save_feedback_freeze_state(is_frozen: bool, sn=f"{section_name} Feedback") -> None:
-                    """Save feedback with frozen state."""
-                    logger.debug(f"save_feedback_freeze_state called for {sn} with is_frozen={is_frozen}")
-                    try:
-                        plan_repo.upsert(topic_id, sn, 
-                            editable_feedback.value if editable_feedback else "", None, is_frozen)
-                        logger.debug(f"Successfully saved feedback freeze state for {sn}")
-                    except Exception as e:
-                        logger.exception(f"Failed to save feedback freeze state for {sn}: {e}")
-                
-                editable_feedback = create_editable_field(
-                    value=feedback,
-                    label="Feedback / Review Notes",
-                    readonly_label="Review Notes",
-                    on_freeze=save_feedback_freeze_state,
-                    is_frozen=False,
-                    rows=2,
-                ).render(ui.column().classes("w-full q-mb-sm"))
-                
-                # Store component reference for run_all
-                section_components[section_name] = {"display": editable_content}
+                field_container = ui.column().classes("w-full")
                 
                 spinner = ui.spinner(size="sm").classes("q-ml-sm")
                 spinner.set_visibility(False)
                 
-                def make_handler(sec_name=section_name, content_field=editable_content, f_in=editable_feedback, spin=spinner):
-                    async def handler():
+                # Create the field first (no callbacks yet)
+                ef = EditableField(
+                    value=content,
+                    label=section_name,
+                    is_frozen=False,
+                    show_feedback=True,
+                    rows=6,
+                )
+                ef.feedback_value = feedback
+                
+                # Wire callbacks, capturing ef via default arg
+                def make_redo_callback(f=ef, sec_name=section_name, spin=spinner):
+                    async def on_redo(content_val: str, feedback_val: str):
                         spin.set_visibility(True)
                         try:
                             result = await asyncio.to_thread(
@@ -165,22 +138,38 @@ def create_plan_panel(
                                 business_canvas_text=canvas_text,
                                 personas_text=personas_text,
                                 section_name=sec_name,
-                                previous_content=content_field.value,
-                                user_feedback=f_in.value
+                                previous_content=content_val,
+                                user_feedback=feedback_val
                             )
-                            content_field.value = result
-                            plan_repo.upsert(topic_id, sec_name, result, f_in.value)
+                            f.value = result
+                            plan_repo.upsert(topic_id, sec_name, result, feedback_val)
                             ui.notify(f"{sec_name} updated.", type="positive")
                         except Exception as e:
                             ui.notify(f"Failed to generate {sec_name}: {e}", type="negative")
                         finally:
                             spin.set_visibility(False)
-                    return handler
+                    return on_redo
                 
-                handler = make_handler()
+                def make_save_callback(f=ef, sec_name=section_name):
+                    def on_save(content_val: str):
+                        try:
+                            plan_repo.upsert(topic_id, sec_name, content_val, f.feedback_value, f.is_frozen)
+                        except Exception as e:
+                            logger.exception(f"Failed to save content for {sec_name}: {e}")
+                    return on_save
                 
-                with ui.row().classes("w-full justify-end q-mt-sm"):
-                    ui.button("Generate / Redo", on_click=handler).props("color=primary")
-                    save_content_btn = ui.button("Save Content", on_click=editable_content.save).props("flat color=secondary size=sm")
-                    save_feedback_btn = ui.button("Save Feedback", on_click=editable_feedback.save).props("flat color=secondary size=sm")
-
+                def make_freeze_callback(f=ef, sec_name=section_name):
+                    def on_freeze(is_frozen: bool):
+                        try:
+                            plan_repo.upsert(topic_id, sec_name, f.value, f.feedback_value, is_frozen)
+                        except Exception as e:
+                            logger.exception(f"Failed to save freeze state for {sec_name}: {e}")
+                    return on_freeze
+                
+                ef.on_save = make_save_callback()
+                ef.on_freeze = make_freeze_callback()
+                ef.on_redo = make_redo_callback()
+                ef.render(field_container)
+                
+                # Store field reference for run_all
+                section_fields[section_name] = ef

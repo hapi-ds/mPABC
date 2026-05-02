@@ -1,15 +1,31 @@
+import logging
 import sqlite3
 from pathlib import Path
 from nicegui import ui
 from business_coach.config import AppSettings
-from business_coach.db.repository import TopicRepository, CanvasElementRepository, VoicePersonaRepository, PlanSectionRepository
+from business_coach.db.repository import (
+    TopicRepository,
+    CanvasElementRepository,
+    VoicePersonaRepository,
+    PlanSectionRepository,
+    PersonalityPreferenceRepository,
+    ResearchSessionRepository,
+    WebSearchRepository,
+)
 from business_coach.export.docx_exporter import DOCXExporter
+from business_coach.export.latex_exporter import (
+    export_canvas_latex,
+    export_voices_latex,
+    export_plan_latex,
+)
 from business_coach.export.pdf_exporter import (
     export_canvas_pdf,
     export_voices_pdf,
     export_plan_pdf,
     get_template_html
 )
+
+logger = logging.getLogger(__name__)
 
 def create_settings_panel(
     container: ui.column,
@@ -184,6 +200,105 @@ def create_settings_panel(
                 preview_dialog.open()
             
             ui.button("Export Business Plan (.pdf)", on_click=export_plan_pdf_with_preview).props("color=deep-orange icon=file_download")
+        
+        ui.separator().classes("w-full q-my-lg")
+        
+        # LaTeX Export Section
+        ui.label("LaTeX (.tex)").classes("text-h6 font-bold q-mb-sm")
+        
+        session_repo = ResearchSessionRepository(conn)
+        web_repo = WebSearchRepository(conn)
+        
+        with ui.row().classes("w-full gap-4"):
+            def export_canvas_tex():
+                try:
+                    elements = canvas_repo.get_by_topic(topic_id)
+                    if not elements:
+                        ui.notify("No canvas elements to export.", type="warning")
+                        return
+                    path = export_canvas_latex(topic_name, elements, export_dir)
+                    if path == Path(""):
+                        ui.notify("No canvas elements to export.", type="warning")
+                        return
+                    ui.notify(f"Canvas LaTeX exported to {path}", type="positive")
+                except Exception as exc:
+                    logger.exception("Failed to export canvas LaTeX for topic %d", topic_id)
+                    ui.notify(f"Failed to export canvas LaTeX: {exc}", type="negative")
+            
+            ui.button("Export Canvas (.tex)", on_click=export_canvas_tex).props("color=teal icon=description")
+            
+            def export_voices_tex():
+                try:
+                    voices = voices_repo.get_by_topic(topic_id)
+                    if not voices:
+                        ui.notify("No voices to export.", type="warning")
+                        return
+                    path = export_voices_latex(topic_name, voices, export_dir)
+                    if path == Path(""):
+                        ui.notify("No voices to export.", type="warning")
+                        return
+                    ui.notify(f"Voices LaTeX exported to {path}", type="positive")
+                except Exception as exc:
+                    logger.exception("Failed to export voices LaTeX for topic %d", topic_id)
+                    ui.notify(f"Failed to export voices LaTeX: {exc}", type="negative")
+            
+            ui.button("Export Voices (.tex)", on_click=export_voices_tex).props("color=teal icon=description")
+            
+            def export_plan_tex():
+                try:
+                    sections = plan_repo.get_by_topic(topic_id)
+                    if not sections:
+                        ui.notify("No plan sections to export.", type="warning")
+                        return
+                    # Gather web search results for bibliography generation
+                    search_results = []
+                    sessions = session_repo.get_by_topic(topic_id)
+                    for session in sessions:
+                        search_results.extend(web_repo.get_by_session(session["id"]))
+                    
+                    path = export_plan_latex(
+                        topic_name,
+                        sections,
+                        export_dir,
+                        search_results=search_results if search_results else None,
+                    )
+                    if path == Path(""):
+                        ui.notify("No plan sections to export.", type="warning")
+                        return
+                    ui.notify(f"Business Plan LaTeX exported to {path}", type="positive")
+                except Exception as exc:
+                    logger.exception("Failed to export plan LaTeX for topic %d", topic_id)
+                    ui.notify(f"Failed to export plan LaTeX: {exc}", type="negative")
+            
+            ui.button("Export Business Plan (.tex)", on_click=export_plan_tex).props("color=teal icon=description")
+        
+        ui.separator().classes("w-full q-my-lg")
+        
+        # Personality Mode Section
+        ui.label("AI Personality Mode").classes("text-h6 font-bold q-mb-sm")
+        ui.label("Select how creative or strict the AI responses should be.").classes("text-body2 q-mb-sm")
+        
+        personality_repo = PersonalityPreferenceRepository(conn)
+        saved_prefs = personality_repo.get_by_topic(topic_id)
+        current_mode = "Balanced"
+        if saved_prefs:
+            current_mode = saved_prefs.get("global", "Balanced")
+        
+        def on_personality_change(e) -> None:
+            """Persist personality mode selection to the database."""
+            try:
+                personality_repo.save(topic_id, {"global": e.value})
+                ui.notify(f"Personality mode set to {e.value}", type="positive")
+            except Exception as exc:
+                logger.exception("Failed to save personality mode for topic %d", topic_id)
+                ui.notify(f"Failed to save personality mode: {exc}", type="negative")
+        
+        ui.select(
+            options=["Creative", "Balanced", "Strict"],
+            value=current_mode,
+            on_change=on_personality_change,
+            label="Personality Mode",
+        ).classes("w-64")
         
         ui.separator().classes("w-full q-my-lg")
         ui.label("App Settings").classes("text-h6 font-bold q-mb-sm")

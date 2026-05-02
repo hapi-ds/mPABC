@@ -1,9 +1,12 @@
 import asyncio
+import logging
 import sqlite3
 from nicegui import ui
 from business_coach.db.repository import CanvasElementRepository, VoicePersonaRepository
 from business_coach.agents.workflow import generate_voice_personas
-from business_coach.gui.editable_field import create_editable_field
+from business_coach.gui.editable_field import EditableField
+
+logger = logging.getLogger(__name__)
 
 def create_voices_panel(
     container: ui.column,
@@ -48,26 +51,45 @@ def create_voices_panel(
             for p in personas:
                 with personas_container:
                     with ui.card().classes("w-full bg-grey-1"):
-                        editable_name = create_editable_field(
+                        name_container = ui.column().classes("w-full")
+                        
+                        def make_name_save(persona=p):
+                            def on_save(val: str):
+                                try:
+                                    voices_repo.update(persona.id, val, persona.description, persona.communication_style)
+                                except Exception as e:
+                                    logger.exception(f"Failed to save persona name: {e}")
+                            return on_save
+                        
+                        EditableField(
                             value=p.name,
                             label="Persona Name",
-                            readonly_label="Name",
+                            on_save=make_name_save(),
                             is_frozen=False,
-                        ).render(ui.column().classes("w-full"))
+                            show_feedback=False,
+                            rows=1,
+                        ).render(name_container)
                         
-                        editable_desc = create_editable_field(
+                        desc_container = ui.column().classes("w-full q-mt-sm")
+                        
+                        def make_desc_save(persona=p):
+                            def on_save(val: str):
+                                try:
+                                    voices_repo.update(persona.id, persona.name, val, persona.communication_style)
+                                except Exception as e:
+                                    logger.exception(f"Failed to save persona description: {e}")
+                            return on_save
+                        
+                        EditableField(
                             value=p.description,
                             label="Description",
-                            readonly_label="Description",
+                            on_save=make_desc_save(),
                             is_frozen=False,
+                            show_feedback=False,
                             rows=4,
-                        ).render(ui.column().classes("w-full q-mb-sm"))
+                        ).render(desc_container)
                         
-                        ui.label(f"Style: {p.communication_style}").classes("text-caption italic")
-                        
-                        with ui.row().classes("w-full justify-end q-mt-sm"):
-                            ui.button("Save", on_click=lambda: editable_name.save()).props("flat color=secondary size=sm")
-                            ui.button("Save Description", on_click=lambda: editable_desc.save()).props("flat color=secondary size=sm")
+                        ui.label(f"Style: {p.communication_style}").classes("text-caption italic q-mt-sm")
         
         async def run_generation():
             spinner.set_visibility(True)

@@ -1,6 +1,6 @@
 """Application settings loaded from environment variables and .env file.
 
-Uses Pydantic Settings with the PATENT_ prefix for all environment variables.
+Uses Pydantic Settings with the BC_ prefix for all environment variables.
 All settings have sensible defaults and are optional. A ValidationError is
 raised at startup if any value fails type validation.
 """
@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def get_base_dir() -> Path:
@@ -89,16 +89,20 @@ class AppSettings(BaseSettings):
     that the ``data/`` and ``logs/`` directories exist.
     """
 
+    model_config = SettingsConfigDict(
+        env_prefix="BC_",
+        env_file=".env",
+    )
+
     # LM Studio
     lm_studio_base_url: str = "http://localhost:1234/v1"
     lm_studio_api_key: str = "not-needed"
 
     # Model assignments per agent task
-    model_disclosure: str = "default"
-    model_search: str = "default"
-    model_claims: str = "default"
-    model_description: str = "default"
-    model_review: str = "default"
+    model_canvas: str = "default"
+    model_voices: str = "default"
+    model_plan: str = "default"
+    model_research: str = "default"
     model_chat: str = "default"
 
     # Embedding
@@ -119,10 +123,6 @@ class AppSettings(BaseSettings):
     search_request_delay_seconds: float = 3.0
     search_relevance_top_k: int = 200
 
-    # EPO Open Patent Services (OPS)
-    epo_ops_key: str = ""
-    epo_ops_secret: str = ""
-
     # Web server
     nicegui_port: int = 8080
     nicegui_reload: bool = False
@@ -132,7 +132,7 @@ class AppSettings(BaseSettings):
     log_level: str = "INFO"
 
     # Default max tokens for AI calls
-    default_max_tokens: int = 2000
+    default_max_tokens: int = 8192
 
     def model_post_init(self, __context: object) -> None:
         """Create runtime directories after settings are initialized.

@@ -40,8 +40,15 @@ def main() -> None:
     setup_logging(settings)
     logger.info("mPABS Business Coach starting")
 
-    configure_dspy(settings)
-    logger.info("DSPy configured with LM Studio at %s", settings.lm_studio_base_url)
+    from business_coach.agents.workflow import init_task_lms
+    lms = configure_dspy(settings)
+    init_task_lms(lms)
+    logger.info(
+        "DSPy configured with LM Studio at %s (canvas=%s, voices=%s, plan=%s, research=%s, chat=%s)",
+        settings.lm_studio_base_url,
+        settings.model_canvas, settings.model_voices, settings.model_plan,
+        settings.model_research, settings.model_chat,
+    )
 
     from business_coach.rag.engine import RAGEngine
     rag_engine = RAGEngine(settings)

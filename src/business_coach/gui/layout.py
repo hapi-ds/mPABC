@@ -131,6 +131,57 @@ def create_layout(
             settings_container = ui.column().classes("w-full p-4")
             # Always show settings, even if no topic is selected
 
+    def _on_tab_change(event) -> None:
+        """Re-render the active panel with fresh data from the database."""
+        topic_id = state["selected_topic_id"]
+        if topic_id is None:
+            logger.debug("Tab switch ignored — no topic selected")
+            return
+
+        tab_name = event.value
+        if tab_name == "Canvas & Chat":
+            canvas_container.clear()
+            idea_repo = BusinessIdeaRepository(conn)
+            canvas_rel_repo = CanvasElementRepository(conn)
+            chat_repo = ChatHistoryRepository(conn)
+            create_canvas_panel(
+                canvas_container, topic_id, conn=conn,
+                idea_repo=idea_repo, canvas_rel_repo=canvas_rel_repo, chat_repo=chat_repo
+            )
+        elif tab_name == "Custom Voices":
+            voices_container.clear()
+            canvas_rel_repo = CanvasElementRepository(conn)
+            voices_repo = VoicePersonaRepository(conn)
+            create_voices_panel(
+                voices_container, topic_id, conn=conn,
+                canvas_repo=canvas_rel_repo, voices_repo=voices_repo
+            )
+        elif tab_name == "Business Plan":
+            plan_container.clear()
+            idea_repo = BusinessIdeaRepository(conn)
+            canvas_rel_repo = CanvasElementRepository(conn)
+            voices_repo = VoicePersonaRepository(conn)
+            plan_repo = PlanSectionRepository(conn)
+            create_plan_panel(
+                plan_container, topic_id, conn=conn,
+                idea_repo=idea_repo, canvas_repo=canvas_rel_repo,
+                voices_repo=voices_repo, plan_repo=plan_repo,
+                header_spinner=header_spinner, header_status_label=header_status_label
+            )
+        elif tab_name == "Settings":
+            settings_container.clear()
+            try:
+                create_settings_panel(
+                    settings_container, topic_id, conn=conn,
+                    settings=settings or AppSettings()
+                )
+            except Exception as e:
+                logger.error(f"Failed to create settings panel on tab switch: {e}", exc_info=True)
+                with settings_container:
+                    ui.label(f"Error loading settings panel: {e}").classes("text-negative")
+
+    tabs.on_value_change(_on_tab_change)
+
 
     def _on_topic_selected(topic_id: int) -> None:
         topic = topic_repo.get_by_id(topic_id)

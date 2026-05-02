@@ -1,11 +1,14 @@
-from nicegui import ui
-import sqlite3
 import asyncio
 import json
+import logging
+import sqlite3
+from nicegui import ui
 from business_coach.db.repository import BusinessIdeaRepository, ResearchSessionRepository, WebSearchRepository
 from business_coach.agents.workflow import generate_search_sections, run_section_search
 from business_coach.config import AppSettings
-from business_coach.gui.editable_field import create_editable_field
+from business_coach.gui.editable_field import EditableField
+
+logger = logging.getLogger(__name__)
 
 def create_idea_panel(
     container: ui.column,
@@ -35,21 +38,27 @@ def create_idea_panel(
             saved_sections = json.loads(saved_sections_json)
         except Exception:
             saved_sections = []
-            
+        
+        idea_field_container = ui.column().classes("w-full q-mb-md")
+        
+        def save_idea(content_val: str) -> None:
+            """Save idea description content."""
+            idea_repo.upsert(topic_id, content_val.strip(), [json.dumps(saved_sections)], editable_desc.is_frozen)
+        
         def save_idea_freeze_state(is_frozen: bool) -> None:
             """Save idea description with frozen state."""
             idea_repo.upsert(topic_id, editable_desc.value.strip(), [json.dumps(saved_sections)], is_frozen)
         
-        editable_desc = create_editable_field(
+        editable_desc = EditableField(
             value=desc,
             label="Describe your business idea (Problem, Solution, Target Audience, Value Prop)",
-            readonly_label="Business Idea",
+            on_save=save_idea,
             on_freeze=save_idea_freeze_state,
             is_frozen=False,
+            show_feedback=False,
             rows=6,
-        ).render(ui.column().classes("w-full q-mb-md"))
-        
-        ui.button("Save Idea", on_click=editable_desc.save).classes("q-mt-sm").props("color=primary")
+        )
+        editable_desc.render(idea_field_container)
         
         ui.separator().classes("w-full q-my-md")
         ui.label("Granular Market Research").classes("text-h6 font-bold q-mb-sm")
@@ -60,7 +69,7 @@ def create_idea_panel(
         # We'll store the run handlers so we can run them all
         run_handlers = []
         
-        def save_idea(sections):
+        def save_idea_sections(sections):
             """Save generated sections to the idea repository."""
             idea_repo.upsert(topic_id, editable_desc.value.strip(), [json.dumps(sections)], editable_desc.is_frozen)
         
@@ -77,7 +86,7 @@ def create_idea_panel(
                 sections = await asyncio.to_thread(generate_search_sections, business_idea=idea)
                 nonlocal saved_sections
                 saved_sections = sections
-                save_idea(sections)
+                save_idea_sections(sections)
                 render_sections(idea, sections)
             except Exception as e:
                 ui.notify(f"Failed to generate sections: {e}", type="negative")
@@ -108,12 +117,16 @@ def create_idea_panel(
                 with ui.card().classes("w-full bg-grey-1"):
                     ui.label(s_name).classes("text-h6 font-bold")
                     
-                    editable_query = create_editable_field(
+                    query_container = ui.column().classes("w-full q-mb-sm")
+                    
+                    editable_query = EditableField(
                         value=s_query,
                         label="Search Query",
-                        readonly_label="Search Query",
                         is_frozen=False,
-                    ).render(ui.column().classes("w-full q-mb-sm"))
+                        show_feedback=False,
+                        rows=1,
+                    )
+                    editable_query.render(query_container)
                     
                     progress_log = ui.log(max_lines=10).classes("w-full h-24 q-mb-sm").style("display: none;")
                     results_area = ui.column().classes("w-full gap-2")
@@ -129,14 +142,14 @@ def create_idea_panel(
                                         ui.link(r.title, r.url).classes("text-subtitle2 font-bold")
                                         ui.label(r.snippet).classes("text-body2 text-grey-8")
                     
-                    async def run_this_search():
-                        progress_log.style("display: block;")
-                        progress_log.clear()
-                        progress_log.push(f"Starting search for: {editable_query.value}")
-                        results_area.clear()
+                    async def run_this_search(eq=editable_query, plog=progress_log, ra=results_area):
+                        plog.style("display: block;")
+                        plog.clear()
+                        plog.push(f"Starting search for: {eq.value}")
+                        ra.clear()
                         
                         def p_cb(msg: str):
-                            progress_log.push(msg)
+                            plog.push(msg)
                             
                         try:
                             results = await asyncio.to_thread(
@@ -144,7 +157,7 @@ def create_idea_panel(
                                 topic_id=topic_id,
                                 business_idea=idea,
                                 section_name=s_name,
-                                search_query=editable_query.value,
+                                search_query=eq.value,
                                 conn=conn,
                                 rag_engine=rag_engine,
                                 settings=settings,
@@ -152,22 +165,20 @@ def create_idea_panel(
                             )
                             
                             if not results:
-                                with results_area: ui.label("No relevant results found.").classes("text-grey")
+                                with ra: ui.label("No relevant results found.").classes("text-grey")
                             else:
                                 for r in results:
-                                    with results_area:
+                                    with ra:
                                         with ui.card().classes("w-full q-mb-sm bg-white"):
                                             ui.link(r.title, r.url).classes("text-subtitle2 font-bold")
                                             ui.label(r.snippet).classes("text-body2 text-grey-8")
                         except Exception as e:
-                            progress_log.push(f"Error: {e}")
+                            plog.push(f"Error: {e}")
                             
                     run_handlers.append(run_this_search)
                     
                     with ui.row().classes("w-full items-center gap-2"):
                         ui.button("Run Search", on_click=run_this_search).props("color=primary size=sm")
-                        ui.button("Rerun Search", on_click=run_this_search).props("flat color=primary size=sm")
-                        ui.button("Save Query", on_click=editable_query.save).props("flat color=secondary size=sm")
                         
         if saved_sections:
             render_sections(desc, saved_sections)

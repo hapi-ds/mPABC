@@ -1,4 +1,4 @@
-"""Structured logging setup for the Patent Analysis & Drafting System.
+"""Structured logging setup for the mPABS Business Coach System.
 
 Provides a JSON formatter producing log entries with ISO timestamp, log level,
 module name, and message. Includes helper functions for event-specific log

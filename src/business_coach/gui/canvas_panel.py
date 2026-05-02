@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import sqlite3
 from nicegui import ui
 from business_coach.db.repository import BusinessIdeaRepository, CanvasElementRepository, ChatHistoryRepository
 from business_coach.agents.workflow import generate_canvas_element
 from business_coach.gui.chat_panel import create_chat_panel
-from business_coach.gui.editable_field import create_editable_field
+from business_coach.gui.editable_field import EditableField
+
+logger = logging.getLogger(__name__)
 
 CANVAS_ELEMENTS = [
     "Key Partners", "Key Activities", "Key Resources", 
@@ -56,79 +59,70 @@ def create_canvas_panel(
                     content = existing.content if existing else ""
                     feedback = existing.user_feedback if existing and existing.user_feedback else ""
                     
-                    editable_content_container = ui.column().classes("w-full q-mb-sm")
-                    
-                    def save_freeze_state(is_frozen: bool, el_name=element) -> None:
-                        """Save canvas element with frozen state."""
-                        logger.debug(f"save_freeze_state called for {el_name} with is_frozen={is_frozen}")
-                        current_value = editable_content.value if editable_content else ""
-                        try:
-                            canvas_rel_repo.upsert(topic_id, el_name, current_value, 
-                                editable_feedback.value if editable_feedback else "", is_frozen)
-                            logger.debug(f"Successfully saved freeze state for {el_name}")
-                        except Exception as e:
-                            logger.exception(f"Failed to save freeze state for {el_name}: {e}")
-                    
-                    editable_content = create_editable_field(
-                        value=content,
-                        label="Content",
-                        readonly_label=f"{element} Content",
-                        on_freeze=save_freeze_state,
-                        is_frozen=False,
-                        rows=4,
-                    ).render(editable_content_container)
-                    
-                    editable_feedback_container = ui.column().classes("w-full q-mb-sm")
-                    
-                    def save_feedback_freeze_state(is_frozen: bool, el_name=f"{element} Feedback") -> None:
-                        """Save feedback field with frozen state."""
-                        logger.debug(f"save_feedback_freeze_state called for {el_name} with is_frozen={is_frozen}")
-                        try:
-                            canvas_rel_repo.upsert(topic_id, el_name, 
-                                editable_feedback.value if editable_feedback else "", None, is_frozen)
-                            logger.debug(f"Successfully saved feedback freeze state for {el_name}")
-                        except Exception as e:
-                            logger.exception(f"Failed to save feedback freeze state for {el_name}: {e}")
-                    
-                    editable_feedback = create_editable_field(
-                        value=feedback,
-                        label="Feedback / Review Notes",
-                        readonly_label="Review Notes",
-                        on_freeze=save_feedback_freeze_state,
-                        is_frozen=False,
-                        rows=2,
-                    ).render(editable_feedback_container)
+                    field_container = ui.column().classes("w-full")
                     
                     spinner = ui.spinner(size="sm").classes("q-ml-sm")
                     spinner.set_visibility(False)
                     
-                    def make_handler(el_name=element, content_field=editable_content, f_in=editable_feedback, spin=spinner):
-                        async def handler():
+                    # Create the field first (no callbacks yet)
+                    ef = EditableField(
+                        value=content,
+                        label=element,
+                        is_frozen=False,
+                        show_feedback=True,
+                        rows=4,
+                    )
+                    ef.feedback_value = feedback
+                    
+                    # Now wire callbacks, capturing ef via default arg
+                    def make_redo_callback(f=ef, el_name=element, spin=spinner):
+                        async def on_redo(content_val: str, feedback_val: str):
                             spin.set_visibility(True)
                             try:
                                 result = await asyncio.to_thread(
                                     generate_canvas_element,
                                     business_idea=idea_text,
                                     element_name=el_name,
-                                    previous_content=content_field.value,
-                                    user_feedback=f_in.value
-                                 )
-                                content_field.value = result
-                                canvas_rel_repo.upsert(topic_id, el_name, result, f_in.value, content_field.is_frozen)
+                                    previous_content=content_val,
+                                    user_feedback=feedback_val
+                                )
+                                f.value = result
+                                canvas_rel_repo.upsert(topic_id, el_name, result, feedback_val, f.is_frozen)
                                 ui.notify(f"{el_name} updated.", type="positive")
                             except Exception as e:
                                 ui.notify(f"Failed to generate {el_name}: {e}", type="negative")
                             finally:
                                 spin.set_visibility(False)
+                        return on_redo
+                    
+                    def make_save_callback(f=ef, el_name=element):
+                        def on_save(content_val: str):
+                            try:
+                                canvas_rel_repo.upsert(topic_id, el_name, content_val, f.feedback_value, f.is_frozen)
+                            except Exception as e:
+                                logger.exception(f"Failed to save content for {el_name}: {e}")
+                        return on_save
+                    
+                    def make_freeze_callback(f=ef, el_name=element):
+                        def on_freeze(is_frozen: bool):
+                            try:
+                                canvas_rel_repo.upsert(topic_id, el_name, f.value, f.feedback_value, is_frozen)
+                            except Exception as e:
+                                logger.exception(f"Failed to save freeze state for {el_name}: {e}")
+                        return on_freeze
+                    
+                    ef.on_save = make_save_callback()
+                    ef.on_freeze = make_freeze_callback()
+                    ef.on_redo = make_redo_callback()
+                    ef.render(field_container)
+                    
+                    # Store handler for "Run All" button
+                    def make_run_all_handler(f=ef):
+                        async def handler():
+                            await f.on_redo(f.value, f.feedback_value)
                         return handler
                     
-                    handler = make_handler()
-                    all_handlers.append(handler)
-
-                    with ui.row().classes("w-full justify-end q-mt-sm"):
-                        ui.button("Generate / Redo", on_click=handler).props("color=primary")
-                        save_content_btn = ui.button("Save Content", on_click=editable_content.save).props("flat color=secondary size=sm")
-                        save_feedback_btn = ui.button("Save Feedback", on_click=editable_feedback.save).props("flat color=secondary size=sm")
+                    all_handlers.append(make_run_all_handler())
                         
         # Right side: AI Chat
         with ui.column().classes("w-1/3 h-full"):

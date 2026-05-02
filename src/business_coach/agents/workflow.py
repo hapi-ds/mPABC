@@ -1,16 +1,64 @@
 import dspy
 import json
 import logging
+import sqlite3
+
 from business_coach.dspy_modules.modules import BusinessCanvasGenerator, VoicePersonaGenerator, PlanSectionGenerator, SearchSectionGenerator, SearchResultScorer
 from business_coach.parsers.web_search import search_web
 from business_coach.rag.embeddings import EmbeddingService
-from business_coach.db.repository import WebSearchRepository, ResearchSessionRepository
+from business_coach.db.repository import WebSearchRepository, ResearchSessionRepository, PersonalityPreferenceRepository
+
+logger = logging.getLogger(__name__)
+
+# Per-task LM instances, populated by init_task_lms() at startup
+_task_lms: dict[str, dspy.LM] = {}
+
+
+def init_task_lms(lms: dict[str, dspy.LM]) -> None:
+    """Store per-task LM instances for use by workflow functions.
+
+    Called once at startup after configure_dspy() returns the LM dict.
+    """
+    _task_lms.update(lms)
+
+
+PERSONALITY_PROMPTS: dict[str, str] = {
+    "Creative": "You are a highly creative and imaginative business advisor. Think outside the box, suggest bold ideas, and explore unconventional approaches.",
+    "Balanced": "You are a balanced business advisor. Combine creative thinking with factual accuracy and practical considerations.",
+    "Strict": "You are a precise and factual business advisor. Only state what can be supported by evidence or established business principles. Avoid speculation.",
+}
+
+
+def _get_personality_prompt(topic_id: int, conn: sqlite3.Connection) -> str:
+    """Read the personality mode for a topic and return the system prompt.
+
+    Args:
+        topic_id: The topic ID to look up preferences for.
+        conn: An open SQLite connection.
+
+    Returns:
+        The personality system prompt string, defaulting to "Balanced".
+    """
+    try:
+        repo = PersonalityPreferenceRepository(conn)
+        prefs = repo.get_by_topic(topic_id)
+        mode = "Balanced"  # default
+        if prefs:
+            mode = prefs.get("global", "Balanced")
+        return PERSONALITY_PROMPTS.get(mode, PERSONALITY_PROMPTS["Balanced"])
+    except Exception:
+        logger.exception(
+            "Failed to read personality mode for topic %d, using Balanced default",
+            topic_id,
+        )
+        return PERSONALITY_PROMPTS["Balanced"]
 
 def generate_search_sections(business_idea: str, user_feedback: str = "") -> list[dict]:
     """Generate search sections using LLM."""
     query_agent = dspy.Predict(SearchSectionGenerator)
     try:
-        q_res = query_agent(business_idea=business_idea, user_feedback=user_feedback)
+        with dspy.context(lm=_task_lms.get("research")):
+            q_res = query_agent(business_idea=business_idea, user_feedback=user_feedback)
         queries_text = q_res.sections_json
         
         # Strip markdown json blocks if present
@@ -61,7 +109,8 @@ def run_section_search(
         progress_callback(f"Found {len(results)} results. Scoring...")
         for res in results:
             # Score the result
-            score_res = scorer_agent(
+            with dspy.context(lm=_task_lms.get("research")):
+                score_res = scorer_agent(
                 business_idea=business_idea,
                 search_query=search_query,
                 search_result_snippet=res.snippet
@@ -101,31 +150,81 @@ def run_section_search(
     return saved_results
 
 
-logger = logging.getLogger(__name__)
+def generate_canvas_element(
+    business_idea: str,
+    element_name: str,
+    previous_content: str = "",
+    user_feedback: str = "",
+    conn: sqlite3.Connection | None = None,
+    topic_id: int | None = None,
+) -> str:
+    """Generate content for a specific canvas element using DSPy.
 
-def generate_canvas_element(business_idea: str, element_name: str, previous_content: str = "", user_feedback: str = "") -> str:
-    """Generate content for a specific canvas element using DSPy."""
-    agent = dspy.Predict(BusinessCanvasGenerator)
-    try:
-        result = agent(
-            business_idea=business_idea,
-            element_name=element_name,
-            previous_content=previous_content,
-            user_feedback=user_feedback
+    Args:
+        business_idea: The core business idea description.
+        element_name: The canvas element name (e.g. 'Key Partners').
+        previous_content: Previously generated content, if any.
+        user_feedback: User feedback to incorporate, if any.
+        conn: Optional SQLite connection for personality mode lookup.
+        topic_id: Optional topic ID for personality mode lookup.
+
+    Returns:
+        Generated content string for the canvas element.
+    """
+    signature = BusinessCanvasGenerator
+    if conn is not None and topic_id is not None:
+        personality_prompt = _get_personality_prompt(topic_id, conn)
+        original_instructions = signature.__doc__ or ""
+        signature = signature.with_instructions(
+            f"{personality_prompt}\n\n{original_instructions}"
         )
+
+    agent = dspy.Predict(signature)
+    try:
+        with dspy.context(lm=_task_lms.get("canvas")):
+            result = agent(
+                business_idea=business_idea,
+                element_name=element_name,
+                previous_content=previous_content,
+                user_feedback=user_feedback
+            )
         return result.generated_content
     except Exception as e:
         logger.error(f"Failed to generate canvas element: {e}")
         return f"Error generating {element_name}."
 
-def generate_voice_personas(business_canvas_text: str, num_personas: int) -> list[dict]:
-    """Generate a list of voice personas based on the canvas."""
-    agent = dspy.Predict(VoicePersonaGenerator)
-    try:
-        result = agent(
-            business_canvas=business_canvas_text,
-            num_personas=str(num_personas)
+def generate_voice_personas(
+    business_canvas_text: str,
+    num_personas: int,
+    conn: sqlite3.Connection | None = None,
+    topic_id: int | None = None,
+) -> list[dict]:
+    """Generate a list of voice personas based on the canvas.
+
+    Args:
+        business_canvas_text: The completed business model canvas text.
+        num_personas: Number of personas to generate.
+        conn: Optional SQLite connection for personality mode lookup.
+        topic_id: Optional topic ID for personality mode lookup.
+
+    Returns:
+        List of persona dicts with 'name', 'description', 'communication_style'.
+    """
+    signature = VoicePersonaGenerator
+    if conn is not None and topic_id is not None:
+        personality_prompt = _get_personality_prompt(topic_id, conn)
+        original_instructions = signature.__doc__ or ""
+        signature = signature.with_instructions(
+            f"{personality_prompt}\n\n{original_instructions}"
         )
+
+    agent = dspy.Predict(signature)
+    try:
+        with dspy.context(lm=_task_lms.get("voices")):
+            result = agent(
+                business_canvas=business_canvas_text,
+                num_personas=str(num_personas)
+            )
         personas_text = result.personas_json
         
         # Strip markdown json blocks if present
@@ -139,18 +238,50 @@ def generate_voice_personas(business_canvas_text: str, num_personas: int) -> lis
         logger.error(f"Failed to generate personas: {e}")
         return []
 
-def generate_plan_section(business_idea: str, business_canvas_text: str, personas_text: str, section_name: str, previous_content: str = "", user_feedback: str = "") -> str:
-    """Generate a section of the business plan using DSPy."""
-    agent = dspy.Predict(PlanSectionGenerator)
-    try:
-        result = agent(
-            business_idea=business_idea,
-            business_canvas=business_canvas_text,
-            personas=personas_text,
-            section_name=section_name,
-            previous_content=previous_content,
-            user_feedback=user_feedback
+def generate_plan_section(
+    business_idea: str,
+    business_canvas_text: str,
+    personas_text: str,
+    section_name: str,
+    previous_content: str = "",
+    user_feedback: str = "",
+    conn: sqlite3.Connection | None = None,
+    topic_id: int | None = None,
+) -> str:
+    """Generate a section of the business plan using DSPy.
+
+    Args:
+        business_idea: The core business idea description.
+        business_canvas_text: The completed business model canvas text.
+        personas_text: Text representation of voice personas.
+        section_name: The plan section name to generate.
+        previous_content: Previously generated content, if any.
+        user_feedback: User feedback to incorporate, if any.
+        conn: Optional SQLite connection for personality mode lookup.
+        topic_id: Optional topic ID for personality mode lookup.
+
+    Returns:
+        Generated content string for the plan section.
+    """
+    signature = PlanSectionGenerator
+    if conn is not None and topic_id is not None:
+        personality_prompt = _get_personality_prompt(topic_id, conn)
+        original_instructions = signature.__doc__ or ""
+        signature = signature.with_instructions(
+            f"{personality_prompt}\n\n{original_instructions}"
         )
+
+    agent = dspy.Predict(signature)
+    try:
+        with dspy.context(lm=_task_lms.get("plan")):
+            result = agent(
+                business_idea=business_idea,
+                business_canvas=business_canvas_text,
+                personas=personas_text,
+                section_name=section_name,
+                previous_content=previous_content,
+                user_feedback=user_feedback
+            )
         return result.generated_content
     except Exception as e:
         logger.error(f"Failed to generate plan section: {e}")

@@ -86,34 +86,29 @@ class TestBuildChatPrompt:
         """The prompt always contains the user question."""
         from business_coach.gui.chat_panel import build_chat_prompt
 
-        prompt = build_chat_prompt([], "What is patent novelty?")
+        prompt = build_chat_prompt("What is patent novelty?")
         assert "What is patent novelty?" in prompt
 
-    def test_prompt_with_context_docs(self) -> None:
-        """Context document texts appear in the prompt."""
+    def test_prompt_with_context(self) -> None:
+        """Context description appears in the prompt."""
         from business_coach.gui.chat_panel import build_chat_prompt
 
-        docs = [
-            {"text": "Prior art document about widgets."},
-            {"text": "Another document about gadgets."},
-        ]
-        prompt = build_chat_prompt(docs, "Compare these inventions")
-        assert "Prior art document about widgets." in prompt
-        assert "Another document about gadgets." in prompt
+        context = {"primary_description": "A widget manufacturing business."}
+        prompt = build_chat_prompt("Compare these inventions", invention_context=context)
+        assert "A widget manufacturing business." in prompt
         assert "Compare these inventions" in prompt
 
-    def test_prompt_no_context_includes_note(self) -> None:
-        """When no context docs, prompt includes a 'no context' note."""
+    def test_prompt_no_context(self) -> None:
+        """When no context is provided, prompt still contains the question."""
         from business_coach.gui.chat_panel import build_chat_prompt
 
-        prompt = build_chat_prompt([], "Tell me about patents")
-        assert "No prior art context" in prompt
+        prompt = build_chat_prompt("Tell me about patents")
         assert "Tell me about patents" in prompt
 
-    def test_prompt_with_context_does_not_include_no_context_note(self) -> None:
-        """When context docs are present, no 'no context' note appears."""
+    def test_prompt_with_context_includes_description(self) -> None:
+        """When context is provided, the description appears in the prompt."""
         from business_coach.gui.chat_panel import build_chat_prompt
 
-        docs = [{"text": "Some document."}]
-        prompt = build_chat_prompt(docs, "Question?")
-        assert "No prior art context" not in prompt
+        context = {"primary_description": "Some business idea."}
+        prompt = build_chat_prompt("Question?", invention_context=context)
+        assert "Some business idea." in prompt

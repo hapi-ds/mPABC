@@ -1,4 +1,4 @@
-"""Custom exception hierarchy for the patent analysis system."""
+"""Custom exception hierarchy for the Business Coach system."""
 
 
 class AgentError(Exception):

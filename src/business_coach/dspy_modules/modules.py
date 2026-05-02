@@ -43,13 +43,35 @@ class SearchResultScorer(dspy.Signature):
     relevance_score = dspy.OutputField(desc="An integer from 0 to 100 representing how useful this snippet is for the business plan.")
     reasoning = dspy.OutputField(desc="Brief reason for the score.")
 
-def configure_dspy(settings) -> None:
-    """Configure DSPy to use LM Studio."""
-    lm = dspy.LM(
-        model=f"openai/{settings.model_chat}",
-        api_base=settings.lm_studio_base_url,
-        api_key=settings.lm_studio_api_key,
-        max_tokens=settings.default_max_tokens,
-    )
-    dspy.configure(lm=lm)
-    return lm
+def configure_dspy(settings) -> dict[str, dspy.LM]:
+    """Configure DSPy with per-task LM instances.
+
+    Creates a separate LM for each agent task so users can assign
+    different models via BC_MODEL_CANVAS, BC_MODEL_VOICES, etc.
+    The "chat" model is set as the global default.
+
+    Args:
+        settings: AppSettings instance with model assignments.
+
+    Returns:
+        Dict mapping task name to configured dspy.LM instance.
+    """
+    def _make_lm(model_name: str) -> dspy.LM:
+        return dspy.LM(
+            model=f"openai/{model_name}",
+            api_base=settings.lm_studio_base_url,
+            api_key=settings.lm_studio_api_key,
+            max_tokens=settings.default_max_tokens,
+        )
+
+    lms = {
+        "canvas": _make_lm(settings.model_canvas),
+        "voices": _make_lm(settings.model_voices),
+        "plan": _make_lm(settings.model_plan),
+        "research": _make_lm(settings.model_research),
+        "chat": _make_lm(settings.model_chat),
+    }
+
+    # Set chat model as the global default
+    dspy.configure(lm=lms["chat"])
+    return lms

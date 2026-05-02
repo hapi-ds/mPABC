@@ -1,4 +1,4 @@
-"""Shared test fixtures for the Patent Analysis & Drafting System."""
+"""Shared test fixtures for the mPABS Business Coach System."""
 
 import sqlite3
 from collections.abc import Generator
