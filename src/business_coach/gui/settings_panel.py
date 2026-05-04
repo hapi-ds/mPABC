@@ -90,8 +90,7 @@ def create_settings_panel(container: ui.column, topic_id: int, conn: sqlite3.Con
 
         if not WEASYPRINT_AVAILABLE:
             ui.label(
-                "⚠ WeasyPrint is not installed — PDF export is disabled. "
-                "Install it with: uv add weasyprint"
+                "⚠ WeasyPrint is not installed — PDF export is disabled. Install it with: uv add weasyprint"
             ).classes("text-body2 text-negative q-mb-sm")
 
         with ui.row().classes("w-full gap-4"):
