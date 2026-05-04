@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.4 (2026-05-04)
+
+### Bug Fixes
+
+- Formating
+  ([`d6701f7`](https://github.com/hapi-ds/mPABC/commit/d6701f791cce1a47e23a6f23c02879c065688ee6))
+
+
 ## v1.0.3 (2026-05-04)
 
 ### Bug Fixes
