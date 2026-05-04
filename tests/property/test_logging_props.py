@@ -77,9 +77,7 @@ class TestStructuredLogEntryFormat:
 
     @given(message=_safe_text, level=_log_levels)
     @settings(max_examples=100)
-    def test_entry_contains_required_fields(
-        self, message: str, level: int, tmp_path_factory
-    ) -> None:
+    def test_entry_contains_required_fields(self, message: str, level: int, tmp_path_factory) -> None:
         tmp_path = tmp_path_factory.mktemp("log14")
         logger, log_file = _make_logger(tmp_path, level=logging.DEBUG)
 

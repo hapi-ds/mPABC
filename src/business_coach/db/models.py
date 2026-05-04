@@ -113,7 +113,7 @@ class PlanSection(BaseModel):
 
     id: int | None = None
     topic_id: int
-    section_name: str # e.g. "Executive Summary", "Market Analysis"
+    section_name: str  # e.g. "Executive Summary", "Market Analysis"
     content: str
     user_feedback: str | None = None
     last_updated: datetime = Field(default_factory=_utc_now)

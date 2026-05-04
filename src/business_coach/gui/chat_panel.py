@@ -10,6 +10,7 @@ from business_coach.db.repository import ChatHistoryRepository, BusinessIdeaRepo
 
 logger = logging.getLogger(__name__)
 
+
 def build_chat_prompt(question: str, invention_context: dict | None = None) -> str:
     parts: list[str] = []
     if invention_context is not None:
@@ -18,8 +19,11 @@ def build_chat_prompt(question: str, invention_context: dict | None = None) -> s
             parts.append(f"Business Idea:\n{desc}\n")
     parts.append(f"Question: {question}")
     # Added instruction to prompt for hard facts
-    parts.append("\nPlease provide a detailed response, and where applicable, include 'hard facts' such as cost estimations, market size, or other quantifiable data.")
+    parts.append(
+        "\nPlease provide a detailed response, and where applicable, include 'hard facts' such as cost estimations, market size, or other quantifiable data."
+    )
     return "\n".join(parts)
+
 
 def _render_message(role: str, text: str) -> None:
     if role == "user":
@@ -28,6 +32,7 @@ def _render_message(role: str, text: str) -> None:
     else:
         with ui.row().classes("w-full justify-start"):
             ui.chat_message(text=text, name="Assistant", sent=False).classes("bg-grey-200 text-lg")
+
 
 def create_chat_panel(
     container: Any,
@@ -53,11 +58,10 @@ def create_chat_panel(
         with container:
             ui.label("AI Chat").classes("text-h6 q-mb-sm")
             scroll_area = ui.scroll_area().classes("w-full border rounded-lg p-2").style("height: 700px;")
-            
+
             chat_messages_container = None
             with scroll_area:
                 chat_messages_container = ui.column().classes("w-full gap-2")
-
 
         existing = chat_repo.get_by_topic(topic_id)
         with chat_messages_container:
@@ -69,7 +73,8 @@ def create_chat_panel(
 
             async def _on_send() -> None:
                 text = message_input.value.strip() if message_input.value else ""
-                if not text: return
+                if not text:
+                    return
 
                 chat_repo.save_message(topic_id, "user", text)
                 with chat_messages_container:
@@ -81,9 +86,10 @@ def create_chat_panel(
                 prompt = build_chat_prompt(text, invention_context=invention_context)
                 try:
                     lm = dspy.settings.lm
-                    if lm is None: raise ConnectionError("DSPy LM is not configured")
+                    if lm is None:
+                        raise ConnectionError("DSPy LM is not configured")
                     response = await asyncio.to_thread(lm, prompt)
-                    
+
                     if isinstance(response, list) and response:
                         item = response[0]
                         assistant_text = item.get("text", "") if isinstance(item, dict) else str(item)

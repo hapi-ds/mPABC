@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from typing import TYPE_CHECKING
 
 from nicegui import ui
 
@@ -15,8 +14,9 @@ from business_coach.db.repository import (
     CanvasElementRepository,
     VoicePersonaRepository,
     PlanSectionRepository,
-    ChatHistoryRepository
+    ChatHistoryRepository,
 )
+
 # We will import the panel creation functions
 from business_coach.gui.idea_panel import create_idea_panel
 from business_coach.gui.canvas_panel import create_canvas_panel
@@ -49,12 +49,16 @@ def create_layout(
                 plan_tab = ui.tab("Business Plan")
                 settings_tab = ui.tab("Settings")
 
-        with ui.row().classes("w-full q-px-md items-center justify-center").style("background: rgba(0,0,0,0.25); min-height: 24px;"):
+        with (
+            ui.row()
+            .classes("w-full q-px-md items-center justify-center")
+            .style("background: rgba(0,0,0,0.25); min-height: 24px;")
+        ):
             header_spinner = ui.spinner("dots", size="xs", color="white")
             header_spinner.set_visibility(False)
             header_status_label = ui.label("").classes("text-caption text-grey-4")
 
-    with ui.left_drawer(value=True).classes("p-4") as drawer:
+    with ui.left_drawer(value=True).classes("p-4"):
         ui.label("Topics").classes("text-h6 q-mb-sm")
         topic_list_container = ui.column().classes("w-full gap-1")
 
@@ -106,26 +110,30 @@ def create_layout(
 
         ui.button("New Topic", on_click=_open_new_topic_dialog, icon="add").classes("w-full q-mt-md")
 
-    with ui.tab_panels(tabs, value=idea_tab).classes("w-full flex-grow") as panels:
+    with ui.tab_panels(tabs, value=idea_tab).classes("w-full flex-grow"):
         with ui.tab_panel(idea_tab):
             idea_container = ui.column().classes("w-full p-4")
             if state["selected_topic_id"] is None:
-                with idea_container: ui.label("Select a topic")
+                with idea_container:
+                    ui.label("Select a topic")
 
         with ui.tab_panel(canvas_tab):
             canvas_container = ui.column().classes("w-full p-4")
             if state["selected_topic_id"] is None:
-                with canvas_container: ui.label("Select a topic")
+                with canvas_container:
+                    ui.label("Select a topic")
 
         with ui.tab_panel(voices_tab):
             voices_container = ui.column().classes("w-full p-4")
             if state["selected_topic_id"] is None:
-                with voices_container: ui.label("Select a topic")
+                with voices_container:
+                    ui.label("Select a topic")
 
         with ui.tab_panel(plan_tab):
             plan_container = ui.column().classes("w-full p-4")
             if state["selected_topic_id"] is None:
-                with plan_container: ui.label("Select a topic")
+                with plan_container:
+                    ui.label("Select a topic")
 
         with ui.tab_panel(settings_tab):
             settings_container = ui.column().classes("w-full p-4")
@@ -145,16 +153,19 @@ def create_layout(
             canvas_rel_repo = CanvasElementRepository(conn)
             chat_repo = ChatHistoryRepository(conn)
             create_canvas_panel(
-                canvas_container, topic_id, conn=conn,
-                idea_repo=idea_repo, canvas_rel_repo=canvas_rel_repo, chat_repo=chat_repo
+                canvas_container,
+                topic_id,
+                conn=conn,
+                idea_repo=idea_repo,
+                canvas_rel_repo=canvas_rel_repo,
+                chat_repo=chat_repo,
             )
         elif tab_name == "Custom Voices":
             voices_container.clear()
             canvas_rel_repo = CanvasElementRepository(conn)
             voices_repo = VoicePersonaRepository(conn)
             create_voices_panel(
-                voices_container, topic_id, conn=conn,
-                canvas_repo=canvas_rel_repo, voices_repo=voices_repo
+                voices_container, topic_id, conn=conn, canvas_repo=canvas_rel_repo, voices_repo=voices_repo
             )
         elif tab_name == "Business Plan":
             plan_container.clear()
@@ -163,18 +174,20 @@ def create_layout(
             voices_repo = VoicePersonaRepository(conn)
             plan_repo = PlanSectionRepository(conn)
             create_plan_panel(
-                plan_container, topic_id, conn=conn,
-                idea_repo=idea_repo, canvas_repo=canvas_rel_repo,
-                voices_repo=voices_repo, plan_repo=plan_repo,
-                header_spinner=header_spinner, header_status_label=header_status_label
+                plan_container,
+                topic_id,
+                conn=conn,
+                idea_repo=idea_repo,
+                canvas_repo=canvas_rel_repo,
+                voices_repo=voices_repo,
+                plan_repo=plan_repo,
+                header_spinner=header_spinner,
+                header_status_label=header_status_label,
             )
         elif tab_name == "Settings":
             settings_container.clear()
             try:
-                create_settings_panel(
-                    settings_container, topic_id, conn=conn,
-                    settings=settings or AppSettings()
-                )
+                create_settings_panel(settings_container, topic_id, conn=conn, settings=settings or AppSettings())
             except Exception as e:
                 logger.error(f"Failed to create settings panel on tab switch: {e}", exc_info=True)
                 with settings_container:
@@ -182,10 +195,10 @@ def create_layout(
 
     tabs.on_value_change(_on_tab_change)
 
-
     def _on_topic_selected(topic_id: int) -> None:
         topic = topic_repo.get_by_id(topic_id)
-        if topic is None: return
+        if topic is None:
+            return
 
         idea_repo = BusinessIdeaRepository(conn)
         canvas_rel_repo = CanvasElementRepository(conn)
@@ -200,34 +213,41 @@ def create_layout(
         plan_container.clear()
 
         create_idea_panel(
-            idea_container, topic_id, conn=conn,
+            idea_container,
+            topic_id,
+            conn=conn,
             idea_repo=idea_repo,
             rag_engine=rag_engine,
             settings=settings,
-            header_status_label=header_status_label, header_spinner=header_spinner
+            header_status_label=header_status_label,
+            header_spinner=header_spinner,
         )
         create_canvas_panel(
-            canvas_container, topic_id, conn=conn,
-            idea_repo=idea_repo, canvas_rel_repo=canvas_rel_repo, chat_repo=chat_repo
+            canvas_container,
+            topic_id,
+            conn=conn,
+            idea_repo=idea_repo,
+            canvas_rel_repo=canvas_rel_repo,
+            chat_repo=chat_repo,
         )
-        create_voices_panel(
-            voices_container, topic_id, conn=conn,
-            canvas_repo=canvas_rel_repo, voices_repo=voices_repo
-        )
+        create_voices_panel(voices_container, topic_id, conn=conn, canvas_repo=canvas_rel_repo, voices_repo=voices_repo)
         create_plan_panel(
-            plan_container, topic_id, conn=conn,
-            idea_repo=idea_repo, canvas_repo=canvas_rel_repo,
-            voices_repo=voices_repo, plan_repo=plan_repo,
-            header_spinner=header_spinner, header_status_label=header_status_label
+            plan_container,
+            topic_id,
+            conn=conn,
+            idea_repo=idea_repo,
+            canvas_repo=canvas_rel_repo,
+            voices_repo=voices_repo,
+            plan_repo=plan_repo,
+            header_spinner=header_spinner,
+            header_status_label=header_status_label,
         )
         # Settings is persistent; we do not clear or recreate it here.
         try:
-            create_settings_panel(
-                settings_container, topic_id, conn=conn,
-                settings=settings or AppSettings()
-            )
+            create_settings_panel(settings_container, topic_id, conn=conn, settings=settings or AppSettings())
         except Exception as e:
             logger.error(f"Failed to create settings panel: {e}", exc_info=True)
-            with settings_container: ui.label(f"Error loading settings panel: {e}").classes("text-negative")
+            with settings_container:
+                ui.label(f"Error loading settings panel: {e}").classes("text-negative")
 
     _refresh_topic_list()

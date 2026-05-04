@@ -11,7 +11,6 @@ import sqlite3
 
 import pytest
 
-from business_coach.db.models import ChatMessage
 from business_coach.db.repository import ChatHistoryRepository
 from business_coach.db.schema import init_schema
 

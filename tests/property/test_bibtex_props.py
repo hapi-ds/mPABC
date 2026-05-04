@@ -22,11 +22,15 @@ from business_coach.export.latex_exporter import generate_bibtex, insert_citatio
 # Safe alphabet for titles and snippets (avoids BibTeX special chars like {, })
 _SAFE_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
 
-_safe_text = st.text(
-    alphabet=_SAFE_ALPHABET,
-    min_size=1,
-    max_size=50,
-).map(lambda s: s.strip()).filter(lambda s: len(s) > 0)
+_safe_text = (
+    st.text(
+        alphabet=_SAFE_ALPHABET,
+        min_size=1,
+        max_size=50,
+    )
+    .map(lambda s: s.strip())
+    .filter(lambda s: len(s) > 0)
+)
 
 # URL strategy: generate plausible URLs with unique paths
 _url_strategy = st.builds(
@@ -99,15 +103,12 @@ class TestBibtexEntryCompleteness:
 
         misc_count = bibtex_string.count("@misc{")
         assert misc_count == len(results), (
-            f"Expected {len(results)} @misc entries, got {misc_count}.\n"
-            f"BibTeX output:\n{bibtex_string}"
+            f"Expected {len(results)} @misc entries, got {misc_count}.\nBibTeX output:\n{bibtex_string}"
         )
 
     @given(results=_search_results_list)
     @settings(max_examples=100)
-    def test_each_entry_contains_required_fields(
-        self, results: list[WebSearchResult]
-    ) -> None:
+    def test_each_entry_contains_required_fields(self, results: list[WebSearchResult]) -> None:
         """Each @misc entry contains title, url, note, and year fields."""
         bibtex_string, url_to_citekey = generate_bibtex(results)
 
@@ -117,23 +118,16 @@ class TestBibtexEntryCompleteness:
         # First element is empty (before the first @misc{)
         entries = [e for e in entries if e.strip()]
 
-        assert len(entries) == len(results), (
-            f"Expected {len(results)} parsed entries, got {len(entries)}."
-        )
+        assert len(entries) == len(results), f"Expected {len(results)} parsed entries, got {len(entries)}."
 
         for i, entry in enumerate(entries):
             required_fields = ["title", "url", "note", "year"]
             for field in required_fields:
-                assert f"{field} = " in entry, (
-                    f"Entry {i + 1} missing field '{field}'.\n"
-                    f"Entry content:\n{entry}"
-                )
+                assert f"{field} = " in entry, f"Entry {i + 1} missing field '{field}'.\nEntry content:\n{entry}"
 
     @given(results=_search_results_list)
     @settings(max_examples=100)
-    def test_entry_values_match_search_results(
-        self, results: list[WebSearchResult]
-    ) -> None:
+    def test_entry_values_match_search_results(self, results: list[WebSearchResult]) -> None:
         """Field values in BibTeX entries match WebSearchResult attributes."""
         bibtex_string, url_to_citekey = generate_bibtex(results)
 
@@ -141,12 +135,9 @@ class TestBibtexEntryCompleteness:
             citekey = f"result_{idx + 1}"
 
             # Verify citekey is in the mapping
-            assert result.url in url_to_citekey, (
-                f"URL '{result.url}' not found in url_to_citekey mapping."
-            )
+            assert result.url in url_to_citekey, f"URL '{result.url}' not found in url_to_citekey mapping."
             assert url_to_citekey[result.url] == citekey, (
-                f"Expected citekey '{citekey}' for URL '{result.url}', "
-                f"got '{url_to_citekey[result.url]}'."
+                f"Expected citekey '{citekey}' for URL '{result.url}', got '{url_to_citekey[result.url]}'."
             )
 
             # Verify field values in the BibTeX string
@@ -166,21 +157,16 @@ class TestBibtexEntryCompleteness:
 
     @given(results=_search_results_list)
     @settings(max_examples=100)
-    def test_url_to_citekey_mapping_complete(
-        self, results: list[WebSearchResult]
-    ) -> None:
+    def test_url_to_citekey_mapping_complete(self, results: list[WebSearchResult]) -> None:
         """The url_to_citekey mapping has one entry per search result."""
         _bibtex_string, url_to_citekey = generate_bibtex(results)
 
         assert len(url_to_citekey) == len(results), (
-            f"Expected {len(results)} entries in url_to_citekey, "
-            f"got {len(url_to_citekey)}."
+            f"Expected {len(results)} entries in url_to_citekey, got {len(url_to_citekey)}."
         )
 
         for result in results:
-            assert result.url in url_to_citekey, (
-                f"URL '{result.url}' missing from url_to_citekey mapping."
-            )
+            assert result.url in url_to_citekey, f"URL '{result.url}' missing from url_to_citekey mapping."
 
 
 # ---------------------------------------------------------------------------
@@ -205,9 +191,7 @@ _url_to_citekey_mapping = st.lists(
 ).map(dict)
 
 
-def _build_latex_body_with_urls(
-    url_to_citekey: dict[str, str], included_urls: list[str]
-) -> str:
+def _build_latex_body_with_urls(url_to_citekey: dict[str, str], included_urls: list[str]) -> str:
     """Build a LaTeX body text that contains the specified URLs."""
     body_parts = []
     for url in included_urls:
@@ -233,9 +217,7 @@ class TestCitationInsertionCorrectness:
         data=st.data(),
     )
     @settings(max_examples=100)
-    def test_cite_count_equals_matched_url_count(
-        self, url_to_citekey: dict[str, str], data: st.DataObject
-    ) -> None:
+    def test_cite_count_equals_matched_url_count(self, url_to_citekey: dict[str, str], data: st.DataObject) -> None:
         """Number of \\cite{} commands equals number of matched URLs."""
         urls = list(url_to_citekey.keys())
 
@@ -282,9 +264,7 @@ class TestCitationInsertionCorrectness:
         data=st.data(),
     )
     @settings(max_examples=100)
-    def test_correct_citekeys_inserted(
-        self, url_to_citekey: dict[str, str], data: st.DataObject
-    ) -> None:
+    def test_correct_citekeys_inserted(self, url_to_citekey: dict[str, str], data: st.DataObject) -> None:
         """Each inserted \\cite{} uses the correct citekey for its URL."""
         urls = list(url_to_citekey.keys())
 
@@ -315,7 +295,4 @@ class TestCitationInsertionCorrectness:
         for url in included_urls:
             expected_citekey = url_to_citekey[url]
             cite_command = f"\\cite{{{expected_citekey}}}"
-            assert cite_command in result, (
-                f"Expected '{cite_command}' in output for URL '{url}'.\n"
-                f"Result:\n{result}"
-            )
+            assert cite_command in result, f"Expected '{cite_command}' in output for URL '{url}'.\nResult:\n{result}"

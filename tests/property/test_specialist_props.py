@@ -267,9 +267,7 @@ class TestUnknownSectionNameFallback:
     """
 
     @given(
-        section_name=st.text(min_size=0, max_size=200).filter(
-            lambda s: s not in _REGISTRY_KEYS
-        ),
+        section_name=st.text(min_size=0, max_size=200).filter(lambda s: s not in _REGISTRY_KEYS),
     )
     @settings(max_examples=100)
     def test_unknown_section_returns_general_advisor_fallback(
@@ -439,9 +437,7 @@ class TestOverridePrecedenceOverRegistryDefault:
         default_specialist = SPECIALIST_REGISTRY[section_name]
 
         # Pick a different specialist from the registry
-        other_specialists = [
-            p for p in SPECIALIST_REGISTRY.values() if p.id != default_specialist.id
-        ]
+        other_specialists = [p for p in SPECIALIST_REGISTRY.values() if p.id != default_specialist.id]
         assume(len(other_specialists) > 0)
         override_specialist = data.draw(st.sampled_from(other_specialists))
 

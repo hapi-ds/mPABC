@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/hapi-ds/mPABC/actions">
-    <img src="https://github.com/hapi-ds/mPAPA/actions/workflows/ci.yml/badge.svg" alt="CI Pipeline Status">
+    <img src="https://github.com/hapi-ds/mPABC/actions/workflows/ci.yml/badge.svg" alt="CI Pipeline Status">
   </a>
 </p>
 

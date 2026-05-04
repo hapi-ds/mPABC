@@ -30,10 +30,9 @@ class SpecialistPersona(BaseModel):
         lower_v = v.lower()
         for keyword in personality_keywords:
             if keyword in lower_v:
-                raise ValueError(
-                    f"Specialist prompt must not contain personality-mode instruction: '{keyword}'"
-                )
+                raise ValueError(f"Specialist prompt must not contain personality-mode instruction: '{keyword}'")
         return v
+
 
 SPECIALIST_REGISTRY: dict[str, SpecialistPersona] = {
     # --- Canvas Elements ---
@@ -91,7 +90,6 @@ SPECIALIST_REGISTRY: dict[str, SpecialistPersona] = {
         domain_description="Expert in pricing strategies, revenue models, and monetization mechanisms.",
         system_prompt="You are a Revenue Model Strategist. Reason about how the company generates cash from each customer segment. Analyze asset sale, usage fee, subscription, lending/renting/leasing, licensing, brokerage, and advertising revenue models. Consider fixed pricing, dynamic pricing, and the willingness-to-pay for each segment.",
     ),
-
     # --- Plan Sections ---
     "Executive Summary": SpecialistPersona(
         id="chief_strategist",
@@ -147,7 +145,6 @@ SPECIALIST_REGISTRY: dict[str, SpecialistPersona] = {
         domain_description="Expert in supporting documentation, data presentation, and reference materials.",
         system_prompt="You are a Business Documentation Specialist. Reason about what supporting materials strengthen the business plan. Organize appendix items including resumes, permits, lease agreements, legal documents, contracts, letters of reference, and any other relevant supporting documentation. Ensure proper cross-referencing to the main plan sections.",
     ),
-
     # --- Voice Personas ---
     "voice_personas": SpecialistPersona(
         id="audience_researcher",

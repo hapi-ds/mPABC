@@ -167,9 +167,7 @@ def markdown_to_latex(text: str, heading_offset: int = 0) -> str:
                 continue
 
             # Parse table cells
-            cells = [
-                cell.strip() for cell in stripped.split("|")[1:-1]
-            ]
+            cells = [cell.strip() for cell in stripped.split("|")[1:-1]]
 
             if not in_table:
                 # Starting a new table
@@ -188,10 +186,7 @@ def markdown_to_latex(text: str, heading_offset: int = 0) -> str:
                 in_table = True
 
             # Escape and format cells
-            escaped_cells = [
-                _process_inline_formatting(_escape_latex_special_chars(cell))
-                for cell in cells
-            ]
+            escaped_cells = [_process_inline_formatting(_escape_latex_special_chars(cell)) for cell in cells]
             output_lines.append(" & ".join(escaped_cells) + r" \\")
             output_lines.append(r"\hline")
             i += 1
@@ -390,9 +385,7 @@ PLAN_SECTION_ORDER = [
 APPENDIX_SECTION = "Appendix"
 
 
-def _build_preamble(
-    title: str, has_bibliography: bool = False, bib_filename: str = ""
-) -> str:
+def _build_preamble(title: str, has_bibliography: bool = False, bib_filename: str = "") -> str:
     r"""Build the LaTeX document preamble.
 
     Includes: \documentclass{article}, inputenc, fontenc, geometry,
@@ -490,9 +483,7 @@ def export_canvas_latex(
 
     body_lines: list[str] = []
     for element in canvas_elements:
-        body_lines.append(
-            r"\section{" + _escape_latex_special_chars(element.element_name) + "}"
-        )
+        body_lines.append(r"\section{" + _escape_latex_special_chars(element.element_name) + "}")
         body_lines.append("")
         body_lines.append(markdown_to_latex(element.content, heading_offset=1))
         body_lines.append("")
@@ -534,9 +525,7 @@ def export_voices_latex(
 
     body_lines: list[str] = []
     for persona in voices:
-        body_lines.append(
-            r"\section{" + _escape_latex_special_chars(persona.name) + "}"
-        )
+        body_lines.append(r"\section{" + _escape_latex_special_chars(persona.name) + "}")
         body_lines.append("")
         body_lines.append(r"\subsection{Description}")
         body_lines.append(markdown_to_latex(persona.description, heading_offset=2))
@@ -607,16 +596,12 @@ def export_plan_latex(
 
     body_lines: list[str] = []
     for section in sorted_sections:
-        body_lines.append(
-            r"\section{" + _escape_latex_special_chars(section.section_name) + "}"
-        )
+        body_lines.append(r"\section{" + _escape_latex_special_chars(section.section_name) + "}")
         body_lines.append("")
         latex_content = markdown_to_latex(section.content, heading_offset=1)
         # Insert citations if we have a bibliography
         if has_bibliography and url_to_citekey:
-            latex_content = insert_citations(
-                latex_content, search_results or [], url_to_citekey
-            )
+            latex_content = insert_citations(latex_content, search_results or [], url_to_citekey)
         body_lines.append(latex_content)
         body_lines.append("")
 

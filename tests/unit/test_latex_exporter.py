@@ -9,7 +9,7 @@ Validates: Requirements 1.4, 1.5, 3.2, 3.4
 import tempfile
 from pathlib import Path
 
-from business_coach.db.models import CanvasElement, PlanSection, VoicePersona, WebSearchResult
+from business_coach.db.models import PlanSection, WebSearchResult
 from business_coach.export.latex_exporter import (
     _build_preamble,
     export_canvas_latex,
@@ -124,9 +124,7 @@ class TestBibliographyConditionalInclusion:
                 )
             ]
 
-            result_path = export_plan_latex(
-                "TestTopic", sections, output_dir, search_results=search_results
-            )
+            result_path = export_plan_latex("TestTopic", sections, output_dir, search_results=search_results)
 
             assert result_path != Path("")
             tex_content = result_path.read_text(encoding="utf-8")
@@ -151,9 +149,7 @@ class TestBibliographyConditionalInclusion:
                 )
             ]
 
-            result_path = export_plan_latex(
-                "TestTopic", sections, output_dir, search_results=search_results
-            )
+            result_path = export_plan_latex("TestTopic", sections, output_dir, search_results=search_results)
 
             assert result_path != Path("")
             tex_content = result_path.read_text(encoding="utf-8")
@@ -178,9 +174,7 @@ class TestBibliographyConditionalInclusion:
                 )
             ]
 
-            export_plan_latex(
-                "TestTopic", sections, output_dir, search_results=search_results
-            )
+            export_plan_latex("TestTopic", sections, output_dir, search_results=search_results)
 
             bib_files = list(output_dir.glob("*.bib"))
             assert len(bib_files) == 1

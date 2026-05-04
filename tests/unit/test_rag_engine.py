@@ -83,9 +83,7 @@ class TestIndexDocuments:
         mock_vsi_cls.from_documents.assert_not_called()
 
     @patch("business_coach.rag.engine.RAGEngine._ensure_embed_model")
-    def test_empty_documents_is_noop(
-        self, mock_ensure: MagicMock, settings: AppSettings
-    ) -> None:
+    def test_empty_documents_is_noop(self, mock_ensure: MagicMock, settings: AppSettings) -> None:
         engine = RAGEngine(settings)
         engine.index_documents(topic_id=1, documents=[])
         # No index should be created
@@ -112,9 +110,7 @@ class TestQuery:
     """Verify query retrieves and formats results correctly."""
 
     @patch("business_coach.rag.engine.RAGEngine._ensure_embed_model")
-    def test_returns_formatted_results(
-        self, mock_ensure: MagicMock, settings: AppSettings
-    ) -> None:
+    def test_returns_formatted_results(self, mock_ensure: MagicMock, settings: AppSettings) -> None:
         engine = RAGEngine(settings)
 
         # Set up a mock index with a mock retriever
@@ -138,9 +134,7 @@ class TestQuery:
         assert results[0]["metadata"] == {"source": "patent_db"}
 
     @patch("business_coach.rag.engine.RAGEngine._ensure_embed_model")
-    def test_passes_top_k_to_retriever(
-        self, mock_ensure: MagicMock, settings: AppSettings
-    ) -> None:
+    def test_passes_top_k_to_retriever(self, mock_ensure: MagicMock, settings: AppSettings) -> None:
         engine = RAGEngine(settings)
 
         mock_index = MagicMock()
@@ -152,9 +146,7 @@ class TestQuery:
         mock_index.as_retriever.assert_called_once_with(similarity_top_k=10)
 
     @patch("business_coach.rag.engine.RAGEngine._ensure_embed_model")
-    def test_default_top_k_is_five(
-        self, mock_ensure: MagicMock, settings: AppSettings
-    ) -> None:
+    def test_default_top_k_is_five(self, mock_ensure: MagicMock, settings: AppSettings) -> None:
         engine = RAGEngine(settings)
 
         mock_index = MagicMock()

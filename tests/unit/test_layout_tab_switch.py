@@ -10,26 +10,24 @@ Requirements: 8.1, 8.2, 8.3, 8.4
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 class TestOnTabChangeNoTopic:
     """Verify no panel is called when selected_topic_id is None."""
 
     def test_no_panel_called_when_topic_is_none(self) -> None:
         """When no topic is selected, _on_tab_change returns early."""
-        from business_coach.gui.layout import create_layout
 
         state = {"selected_topic_id": None}
-        event = SimpleNamespace(value="Canvas & Chat")
+        SimpleNamespace(value="Canvas & Chat")
 
         # We test the handler logic directly by extracting it.
         # Simulate the guard clause behavior.
-        with patch("business_coach.gui.layout.create_canvas_panel") as mock_canvas, \
-             patch("business_coach.gui.layout.create_voices_panel") as mock_voices, \
-             patch("business_coach.gui.layout.create_plan_panel") as mock_plan, \
-             patch("business_coach.gui.layout.create_settings_panel") as mock_settings:
-
+        with (
+            patch("business_coach.gui.layout.create_canvas_panel") as mock_canvas,
+            patch("business_coach.gui.layout.create_voices_panel") as mock_voices,
+            patch("business_coach.gui.layout.create_plan_panel") as mock_plan,
+            patch("business_coach.gui.layout.create_settings_panel") as mock_settings,
+        ):
             # Simulate the handler logic
             topic_id = state["selected_topic_id"]
             if topic_id is None:
@@ -80,8 +78,12 @@ class TestOnTabChangeCanvasTab:
             canvas_rel_repo = mock_canvas_repo_cls(conn)
             chat_repo = mock_chat_repo_cls(conn)
             mock_create_canvas(
-                container, topic_id, conn=conn,
-                idea_repo=idea_repo, canvas_rel_repo=canvas_rel_repo, chat_repo=chat_repo
+                container,
+                topic_id,
+                conn=conn,
+                idea_repo=idea_repo,
+                canvas_rel_repo=canvas_rel_repo,
+                chat_repo=chat_repo,
             )
 
         mock_create_canvas.assert_called_once()
@@ -124,10 +126,7 @@ class TestOnTabChangeVoicesTab:
             container.clear()
             canvas_rel_repo = mock_canvas_repo_cls(conn)
             voices_repo = mock_voices_repo_cls(conn)
-            mock_create_voices(
-                container, topic_id, conn=conn,
-                canvas_repo=canvas_rel_repo, voices_repo=voices_repo
-            )
+            mock_create_voices(container, topic_id, conn=conn, canvas_repo=canvas_rel_repo, voices_repo=voices_repo)
 
         mock_create_voices.assert_called_once()
         mock_canvas_repo_cls.assert_called_once_with(conn)
@@ -177,10 +176,15 @@ class TestOnTabChangePlanTab:
             voices_repo = mock_voices_repo_cls(conn)
             plan_repo = mock_plan_repo_cls(conn)
             mock_create_plan(
-                container, topic_id, conn=conn,
-                idea_repo=idea_repo, canvas_repo=canvas_rel_repo,
-                voices_repo=voices_repo, plan_repo=plan_repo,
-                header_spinner=header_spinner, header_status_label=header_status_label
+                container,
+                topic_id,
+                conn=conn,
+                idea_repo=idea_repo,
+                canvas_repo=canvas_rel_repo,
+                voices_repo=voices_repo,
+                plan_repo=plan_repo,
+                header_spinner=header_spinner,
+                header_status_label=header_status_label,
             )
 
         mock_create_plan.assert_called_once()
@@ -219,10 +223,7 @@ class TestOnTabChangeSettingsTab:
 
         if tab_name == "Settings":
             container.clear()
-            mock_create_settings(
-                container, topic_id, conn=conn,
-                settings=settings
-            )
+            mock_create_settings(container, topic_id, conn=conn, settings=settings)
 
         mock_create_settings.assert_called_once()
         mock_create_canvas.assert_not_called()

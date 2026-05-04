@@ -3,10 +3,21 @@ import json
 import logging
 import sqlite3
 
-from business_coach.dspy_modules.modules import BusinessCanvasGenerator, VoicePersonaGenerator, PlanSectionGenerator, SearchSectionGenerator, SearchResultScorer
+from business_coach.dspy_modules.modules import (
+    BusinessCanvasGenerator,
+    VoicePersonaGenerator,
+    PlanSectionGenerator,
+    SearchSectionGenerator,
+    SearchResultScorer,
+)
 from business_coach.parsers.web_search import search_web
 from business_coach.rag.embeddings import EmbeddingService
-from business_coach.db.repository import WebSearchRepository, ResearchSessionRepository, PersonalityPreferenceRepository, SpecialistOverrideRepository
+from business_coach.db.repository import (
+    WebSearchRepository,
+    ResearchSessionRepository,
+    PersonalityPreferenceRepository,
+    SpecialistOverrideRepository,
+)
 from business_coach.agents.specialists import get_specialist, SPECIALIST_REGISTRY, SpecialistPersona
 
 logger = logging.getLogger(__name__)
@@ -54,6 +65,7 @@ def _get_personality_prompt(topic_id: int, conn: sqlite3.Connection) -> str:
         )
         return PERSONALITY_PROMPTS["Balanced"]
 
+
 def _resolve_specialist(
     section_name: str,
     topic_id: int | None = None,
@@ -80,14 +92,16 @@ def _resolve_specialist(
                         return persona
                 # Override references a non-existent specialist
                 logger.warning(
-                    "Override for topic %d section '%s' references unknown specialist '%s', "
-                    "falling back to default",
-                    topic_id, section_name, override_id,
+                    "Override for topic %d section '%s' references unknown specialist '%s', falling back to default",
+                    topic_id,
+                    section_name,
+                    override_id,
                 )
         except Exception:
             logger.exception(
                 "Failed to read specialist override for topic %d section '%s'",
-                topic_id, section_name,
+                topic_id,
+                section_name,
             )
     return get_specialist(section_name)
 
@@ -122,13 +136,13 @@ def generate_search_sections(business_idea: str, user_feedback: str = "") -> lis
         with dspy.context(lm=_task_lms.get("research")):
             q_res = query_agent(business_idea=business_idea, user_feedback=user_feedback)
         queries_text = q_res.sections_json
-        
+
         # Strip markdown json blocks if present
         if queries_text.startswith("```json"):
             queries_text = queries_text[7:-3]
         elif queries_text.startswith("```"):
             queries_text = queries_text[3:-3]
-            
+
         sections = json.loads(queries_text.strip())
         if not isinstance(sections, list):
             return [{"section_name": "General Research", "search_query": str(sections)}]
@@ -137,9 +151,13 @@ def generate_search_sections(business_idea: str, user_feedback: str = "") -> lis
         logger.error(f"Failed to generate sections: {e}")
         return [
             {"section_name": "Competitors", "search_query": f"top competitors for {business_idea[:50]}"},
-            {"section_name": "Target Customers", "search_query": f"target audience demographics for {business_idea[:50]}"},
-            {"section_name": "Finances", "search_query": f"startup costs and pricing for {business_idea[:50]}"}
+            {
+                "section_name": "Target Customers",
+                "search_query": f"target audience demographics for {business_idea[:50]}",
+            },
+            {"section_name": "Finances", "search_query": f"startup costs and pricing for {business_idea[:50]}"},
         ]
+
 
 def run_section_search(
     topic_id: int,
@@ -149,7 +167,7 @@ def run_section_search(
     conn,
     rag_engine,
     settings,
-    progress_callback
+    progress_callback,
 ) -> list:
     """Run search, score, and index for a single section."""
     session_repo = ResearchSessionRepository(conn)
@@ -160,10 +178,10 @@ def run_section_search(
         api_key=settings.lm_studio_api_key,
     )
     scorer_agent = dspy.Predict(SearchResultScorer)
-    
+
     docs_to_index = []
     saved_results = []
-    
+
     progress_callback(f"Searching web for '{search_query}'...")
     session_id = session_repo.create(topic_id, search_query)
     try:
@@ -173,42 +191,43 @@ def run_section_search(
             # Score the result
             with dspy.context(lm=_task_lms.get("research")):
                 score_res = scorer_agent(
-                business_idea=business_idea,
-                search_query=search_query,
-                search_result_snippet=res.snippet
-            )
-            
+                    business_idea=business_idea, search_query=search_query, search_result_snippet=res.snippet
+                )
+
             try:
                 score = int(score_res.relevance_score)
             except ValueError:
                 score = 50
-                
-            if score >= 60: # Threshold for relevance
+
+            if score >= 60:  # Threshold for relevance
                 # Generate embedding
                 embedding_bytes = emb_service.generate_embedding(res.title + " " + res.snippet)
                 if embedding_bytes:
                     import struct
+
                     res.embedding = embedding_bytes
                     web_repo.create(session_id, res)
                     saved_results.append(res)
-                    
-                    emb_floats = list(struct.unpack(f"{len(embedding_bytes)//4}f", embedding_bytes))
-                    docs_to_index.append({
-                        "text": f"[{section_name}] {res.title}\\n{res.snippet}",
-                        "metadata": {"url": res.url, "source": "web", "section": section_name},
-                        "embedding": emb_floats
-                    })
+
+                    emb_floats = list(struct.unpack(f"{len(embedding_bytes) // 4}f", embedding_bytes))
+                    docs_to_index.append(
+                        {
+                            "text": f"[{section_name}] {res.title}\\n{res.snippet}",
+                            "metadata": {"url": res.url, "source": "web", "section": section_name},
+                            "embedding": emb_floats,
+                        }
+                    )
     except Exception as e:
         logger.error(f"Search/Score failed for query '{search_query}': {e}")
         progress_callback(f"Search failed: {e}")
-        
+
     if docs_to_index:
         progress_callback(f"Indexing {len(docs_to_index)} relevant documents...")
         rag_engine.index_with_embeddings(topic_id, docs_to_index)
         progress_callback("Done!")
     else:
         progress_callback("No highly relevant documents found.")
-        
+
     return saved_results
 
 
@@ -236,9 +255,7 @@ def generate_canvas_element(
     signature = BusinessCanvasGenerator
     composed = _compose_prompt(topic_id, conn, element_name)
     original_instructions = signature.__doc__ or ""
-    signature = signature.with_instructions(
-        f"{composed}\n\n{original_instructions}"
-    )
+    signature = signature.with_instructions(f"{composed}\n\n{original_instructions}")
 
     agent = dspy.Predict(signature)
     try:
@@ -247,12 +264,13 @@ def generate_canvas_element(
                 business_idea=business_idea,
                 element_name=element_name,
                 previous_content=previous_content,
-                user_feedback=user_feedback
+                user_feedback=user_feedback,
             )
         return result.generated_content
     except Exception as e:
         logger.error(f"Failed to generate canvas element: {e}")
         return f"Error generating {element_name}."
+
 
 def generate_voice_personas(
     business_canvas_text: str,
@@ -274,29 +292,25 @@ def generate_voice_personas(
     signature = VoicePersonaGenerator
     composed = _compose_prompt(topic_id, conn, "voice_personas")
     original_instructions = signature.__doc__ or ""
-    signature = signature.with_instructions(
-        f"{composed}\n\n{original_instructions}"
-    )
+    signature = signature.with_instructions(f"{composed}\n\n{original_instructions}")
 
     agent = dspy.Predict(signature)
     try:
         with dspy.context(lm=_task_lms.get("voices")):
-            result = agent(
-                business_canvas=business_canvas_text,
-                num_personas=str(num_personas)
-            )
+            result = agent(business_canvas=business_canvas_text, num_personas=str(num_personas))
         personas_text = result.personas_json
-        
+
         # Strip markdown json blocks if present
         if personas_text.startswith("```json"):
             personas_text = personas_text[7:-3]
         elif personas_text.startswith("```"):
             personas_text = personas_text[3:-3]
-            
+
         return json.loads(personas_text.strip())
     except Exception as e:
         logger.error(f"Failed to generate personas: {e}")
         return []
+
 
 def generate_plan_section(
     business_idea: str,
@@ -326,9 +340,7 @@ def generate_plan_section(
     signature = PlanSectionGenerator
     composed = _compose_prompt(topic_id, conn, section_name)
     original_instructions = signature.__doc__ or ""
-    signature = signature.with_instructions(
-        f"{composed}\n\n{original_instructions}"
-    )
+    signature = signature.with_instructions(f"{composed}\n\n{original_instructions}")
 
     agent = dspy.Predict(signature)
     try:
@@ -339,7 +351,7 @@ def generate_plan_section(
                 personas=personas_text,
                 section_name=section_name,
                 previous_content=previous_content,
-                user_feedback=user_feedback
+                user_feedback=user_feedback,
             )
         return result.generated_content
     except Exception as e:

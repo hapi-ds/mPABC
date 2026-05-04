@@ -25,11 +25,15 @@ from business_coach.export.latex_exporter import (
 # Avoids *, #, |, `, -, &, %, $, _, {, }, ~, ^ which interfere with parsing.
 _SAFE_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
 
-_safe_text = st.text(
-    alphabet=_SAFE_ALPHABET,
-    min_size=3,
-    max_size=40,
-).map(lambda s: s.strip()).filter(lambda s: len(s) >= 3)
+_safe_text = (
+    st.text(
+        alphabet=_SAFE_ALPHABET,
+        min_size=3,
+        max_size=40,
+    )
+    .map(lambda s: s.strip())
+    .filter(lambda s: len(s) >= 3)
+)
 
 # CanvasElement strategy
 _canvas_element_strategy = st.builds(
@@ -90,9 +94,7 @@ def _plan_sections_shuffled(draw: st.DrawFn) -> list[PlanSection]:
     sections = []
     for name in chosen_names:
         content = draw(_safe_text)
-        sections.append(
-            PlanSection(topic_id=1, section_name=name, content=content)
-        )
+        sections.append(PlanSection(topic_id=1, section_name=name, content=content))
 
     # Use hypothesis permutations to shuffle (avoids random module warning)
     indices = list(range(len(sections)))
@@ -118,9 +120,7 @@ class TestCanvasExportContentCompleteness:
 
     @given(elements=_canvas_elements_list)
     @settings(max_examples=100)
-    def test_all_element_names_present(
-        self, elements: list[CanvasElement], tmp_path_factory: object
-    ) -> None:
+    def test_all_element_names_present(self, elements: list[CanvasElement], tmp_path_factory: object) -> None:
         """All canvas element names appear in the generated .tex file."""
         import tempfile
         from pathlib import Path
@@ -134,15 +134,12 @@ class TestCanvasExportContentCompleteness:
 
             for element in elements:
                 assert element.element_name in tex_content, (
-                    f"Element name '{element.element_name}' not found in .tex output.\n"
-                    f"Output:\n{tex_content[:500]}"
+                    f"Element name '{element.element_name}' not found in .tex output.\nOutput:\n{tex_content[:500]}"
                 )
 
     @given(elements=_canvas_elements_list)
     @settings(max_examples=100)
-    def test_all_element_content_present(
-        self, elements: list[CanvasElement]
-    ) -> None:
+    def test_all_element_content_present(self, elements: list[CanvasElement]) -> None:
         """All canvas element content appears in the generated .tex file."""
         import tempfile
         from pathlib import Path
@@ -157,8 +154,7 @@ class TestCanvasExportContentCompleteness:
             for element in elements:
                 # Content is safe text (no special chars), so it should appear as-is
                 assert element.content in tex_content, (
-                    f"Element content '{element.content}' not found in .tex output.\n"
-                    f"Output:\n{tex_content[:500]}"
+                    f"Element content '{element.content}' not found in .tex output.\nOutput:\n{tex_content[:500]}"
                 )
 
 
@@ -180,9 +176,7 @@ class TestVoicesExportContentCompleteness:
 
     @given(voices=_voices_list)
     @settings(max_examples=100)
-    def test_all_persona_names_present(
-        self, voices: list[VoicePersona]
-    ) -> None:
+    def test_all_persona_names_present(self, voices: list[VoicePersona]) -> None:
         """All persona names appear in the generated .tex file."""
         import tempfile
         from pathlib import Path
@@ -196,15 +190,12 @@ class TestVoicesExportContentCompleteness:
 
             for persona in voices:
                 assert persona.name in tex_content, (
-                    f"Persona name '{persona.name}' not found in .tex output.\n"
-                    f"Output:\n{tex_content[:500]}"
+                    f"Persona name '{persona.name}' not found in .tex output.\nOutput:\n{tex_content[:500]}"
                 )
 
     @given(voices=_voices_list)
     @settings(max_examples=100)
-    def test_all_persona_descriptions_present(
-        self, voices: list[VoicePersona]
-    ) -> None:
+    def test_all_persona_descriptions_present(self, voices: list[VoicePersona]) -> None:
         """All persona descriptions appear in the generated .tex file."""
         import tempfile
         from pathlib import Path
@@ -224,9 +215,7 @@ class TestVoicesExportContentCompleteness:
 
     @given(voices=_voices_list)
     @settings(max_examples=100)
-    def test_all_persona_styles_present(
-        self, voices: list[VoicePersona]
-    ) -> None:
+    def test_all_persona_styles_present(self, voices: list[VoicePersona]) -> None:
         """All persona communication styles appear in the generated .tex file."""
         import tempfile
         from pathlib import Path
@@ -265,9 +254,7 @@ class TestPlanSectionOrdering:
 
     @given(sections=_plan_sections_shuffled())
     @settings(max_examples=100)
-    def test_sections_appear_in_standard_order(
-        self, sections: list[PlanSection]
-    ) -> None:
+    def test_sections_appear_in_standard_order(self, sections: list[PlanSection]) -> None:
         """Plan sections appear in standard order regardless of input order."""
         import tempfile
         from pathlib import Path
@@ -300,10 +287,7 @@ class TestPlanSectionOrdering:
             actual_order = [name for _, name in section_positions]
 
             # Build expected order from PLAN_SECTION_ORDER for the sections present
-            expected_order = [
-                name for name in PLAN_SECTION_ORDER
-                if name in [s.section_name for s in sections]
-            ]
+            expected_order = [name for name in PLAN_SECTION_ORDER if name in [s.section_name for s in sections]]
 
             assert actual_order == expected_order, (
                 f"Section order mismatch.\n"

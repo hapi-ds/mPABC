@@ -48,7 +48,8 @@ class LMStudioEmbedding(BaseEmbedding):
     def _get_text_embedding(self, text: str) -> list[float]:
         """Get embedding for a single text string."""
         resp = self._client.embeddings.create(
-            input=[text], model=self._model_id,
+            input=[text],
+            model=self._model_id,
         )
         return resp.data[0].embedding
 
@@ -61,11 +62,14 @@ class LMStudioEmbedding(BaseEmbedding):
         return self._get_query_embedding(query)
 
     def _get_text_embedding_batch(
-        self, texts: list[str], **kwargs: Any,
+        self,
+        texts: list[str],
+        **kwargs: Any,
     ) -> list[list[float]]:
         """Get embeddings for a batch of texts in a single API call."""
         resp = self._client.embeddings.create(
-            input=texts, model=self._model_id,
+            input=texts,
+            model=self._model_id,
         )
         # Sort by index to preserve order
         sorted_data = sorted(resp.data, key=lambda d: d.index)
@@ -128,7 +132,8 @@ class EmbeddingService:
             return None
 
     def generate_embedding_for_record(
-        self, record: WebSearchResult,
+        self,
+        record: WebSearchResult,
     ) -> bytes | None:
         """Generate an embedding for a web search record.
 

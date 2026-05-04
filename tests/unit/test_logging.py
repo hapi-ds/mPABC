@@ -40,9 +40,7 @@ def _read_last_entry(log_file: Path) -> dict:
 class TestStructuredFormatter:
     """Verify the JSON formatter produces valid structured entries."""
 
-    def test_basic_entry_has_required_fields(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_basic_entry_has_required_fields(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         logger.info("hello world")
         entry = _read_last_entry(log_file)
@@ -51,26 +49,20 @@ class TestStructuredFormatter:
         assert "module" in entry
         assert entry["message"] == "hello world"
 
-    def test_timestamp_is_valid_iso(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_timestamp_is_valid_iso(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         logger.warning("check ts")
         entry = _read_last_entry(log_file)
         # Should parse without error
         datetime.fromisoformat(entry["timestamp"])
 
-    def test_extra_fields_merged(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_extra_fields_merged(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         logger.info("with extras", extra={"extra_fields": {"foo": "bar"}})
         entry = _read_last_entry(log_file)
         assert entry["foo"] == "bar"
 
-    def test_each_line_is_valid_json(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_each_line_is_valid_json(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         logger.info("line one")
         logger.error("line two")
@@ -101,18 +93,14 @@ class TestSetupLogging:
         assert root.level == logging.WARNING
         # Cleanup
         root.handlers = [
-            h
-            for h in root.handlers
-            if not (isinstance(h, logging.FileHandler) and h.baseFilename == str(log_file))
+            h for h in root.handlers if not (isinstance(h, logging.FileHandler) and h.baseFilename == str(log_file))
         ]
 
 
 class TestLogAgentInvocation:
     """Verify agent invocation helper produces correct fields."""
 
-    def test_fields_present(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_fields_present(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         log_agent_invocation(logger, "DisclosureAgent", "input_s", "output_s", 123.4)
         entry = _read_last_entry(log_file)
@@ -126,9 +114,7 @@ class TestLogAgentInvocation:
 class TestLogExternalRequest:
     """Verify external request helper produces correct fields."""
 
-    def test_fields_present(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_fields_present(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         log_external_request(logger, "EPO OPS", "query_x", "200", 456.7)
         entry = _read_last_entry(log_file)
@@ -142,9 +128,7 @@ class TestLogExternalRequest:
 class TestLogDbError:
     """Verify DB error helper produces correct fields."""
 
-    def test_fields_present(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_fields_present(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         log_db_error(logger, "INSERT", "patents", "UNIQUE constraint failed")
         entry = _read_last_entry(log_file)
@@ -157,9 +141,7 @@ class TestLogDbError:
 class TestLogLlmCall:
     """Verify LLM call helper produces correct fields."""
 
-    def test_basic_fields(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_basic_fields(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         log_llm_call(logger, "llama3", 100, 200, 1500.0)
         entry = _read_last_entry(log_file)
@@ -169,13 +151,15 @@ class TestLogLlmCall:
         assert entry["response_tokens"] == 200
         assert entry["latency"] == 1500.0
 
-    def test_debug_includes_full_text(
-        self, json_logger: tuple[logging.Logger, Path]
-    ) -> None:
+    def test_debug_includes_full_text(self, json_logger: tuple[logging.Logger, Path]) -> None:
         logger, log_file = json_logger
         logger.setLevel(logging.DEBUG)
         log_llm_call(
-            logger, "llama3", 10, 20, 500.0,
+            logger,
+            "llama3",
+            10,
+            20,
+            500.0,
             prompt_text="Tell me about patents",
             response_text="Patents are...",
         )
@@ -193,7 +177,11 @@ class TestLogLlmCall:
         logger.addHandler(handler)
 
         log_llm_call(
-            logger, "llama3", 10, 20, 500.0,
+            logger,
+            "llama3",
+            10,
+            20,
+            500.0,
             prompt_text="Tell me about patents",
             response_text="Patents are...",
         )

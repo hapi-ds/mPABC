@@ -168,13 +168,14 @@ def get_connection(database_path: Path) -> sqlite3.Connection:
     db_key = str(database_path.resolve())
     if db_key not in _initialized_databases:
         init_schema(conn)
-        
+
         # Add frozen column to existing tables (if upgrading from older version)
         add_frozen_columns(conn)
-        
+
         _initialized_databases.add(db_key)
 
     return conn
+
 
 def add_frozen_columns(conn: sqlite3.Connection) -> None:
     """Add is_frozen column to tables if it doesn't exist (migration for v1.1)."""
@@ -183,18 +184,15 @@ def add_frozen_columns(conn: sqlite3.Connection) -> None:
         ("canvas_elements", "is_frozen"),
         ("plan_sections", "is_frozen"),
     ]
-    
+
     for table_name, column_name in tables_to_update:
         try:
             # Check if column exists
             cursor = conn.execute(f"PRAGMA table_info({table_name})")
             columns = [row[1] for row in cursor.fetchall()]
-            
+
             if column_name not in columns:
-                conn.execute(
-                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} BOOLEAN NOT NULL DEFAULT 0"
-                )
-        except Exception as e:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} BOOLEAN NOT NULL DEFAULT 0")
+        except Exception:
             # Column might already exist or table might not exist
             pass
-

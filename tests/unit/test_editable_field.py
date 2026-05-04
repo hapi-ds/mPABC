@@ -8,7 +8,6 @@ Requirements: 9.1–9.5, 10.1–10.5, 11.1–11.5
 
 from unittest.mock import MagicMock
 
-import pytest
 
 from business_coach.gui.editable_field import EditableField, FieldState
 

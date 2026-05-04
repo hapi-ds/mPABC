@@ -3,13 +3,22 @@
 Validates: Requirements 2.1, 2.2, 2.3, 2.5, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6
 """
 
-import pytest
+import json
+import sqlite3
+from unittest.mock import MagicMock, patch
 
 from business_coach.agents.specialists import (
     SPECIALIST_REGISTRY,
     SpecialistPersona,
-    get_specialist,
 )
+from business_coach.agents.workflow import (
+    PERSONALITY_PROMPTS,
+    generate_canvas_element,
+    generate_plan_section,
+    generate_voice_personas,
+)
+from business_coach.db.repository import SpecialistOverrideRepository
+from business_coach.db.schema import init_schema
 
 
 # Expected canvas element keys (9 total)
@@ -241,19 +250,6 @@ class TestSchemaMigration:
 # Validates: Requirements 4.2, 5.2, 6.2, 8.2
 # ---------------------------------------------------------------------------
 
-import json
-import sqlite3
-from unittest.mock import MagicMock, patch
-
-from business_coach.agents.specialists import SPECIALIST_REGISTRY, get_specialist
-from business_coach.agents.workflow import (
-    PERSONALITY_PROMPTS,
-    generate_canvas_element,
-    generate_plan_section,
-    generate_voice_personas,
-)
-from business_coach.db.schema import init_schema
-
 
 def _make_test_db() -> sqlite3.Connection:
     """Create an in-memory SQLite DB with schema initialized and a test topic."""
@@ -410,9 +406,7 @@ class TestGenerateVoicePersonasUsesSpecialist:
     @patch("business_coach.agents.workflow.dspy.Predict")
     def test_voice_personas_uses_audience_researcher(self, mock_predict: MagicMock) -> None:
         """generate_voice_personas should use the 'voice_personas' specialist."""
-        personas_data = [
-            {"name": "Persona 1", "description": "Desc 1", "communication_style": "Style 1"}
-        ]
+        personas_data = [{"name": "Persona 1", "description": "Desc 1", "communication_style": "Style 1"}]
         mock_agent = MagicMock()
         mock_agent.return_value = MagicMock(personas_json=json.dumps(personas_data))
         mock_predict.return_value = mock_agent
@@ -523,8 +517,6 @@ class TestOverridesAppliedDuringGeneration:
 # Unit tests for settings panel specialist section (SpecialistOverrideRepository)
 # Validates: Requirements 7.2, 7.4
 # ---------------------------------------------------------------------------
-
-from business_coach.db.repository import SpecialistOverrideRepository
 
 
 class TestSettingsPanelSpecialistOverrides:

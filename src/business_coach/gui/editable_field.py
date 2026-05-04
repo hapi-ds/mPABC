@@ -167,7 +167,7 @@ class EditableField:
             if self.on_save:
                 try:
                     self.on_save(self._value)
-                except Exception as e:
+                except Exception:
                     logger.exception("on_save callback failed")
 
             self._transition_to(FieldState.VIEW)
@@ -188,14 +188,14 @@ class EditableField:
                 if self.on_save:
                     try:
                         self.on_save(self._value)
-                    except Exception as e:
+                    except Exception:
                         logger.exception("on_save callback failed during auto-save before freeze")
 
             # Notify freeze callback
             if self.on_freeze:
                 try:
                     self.on_freeze(True)
-                except Exception as e:
+                except Exception:
                     logger.exception("on_freeze callback failed")
 
             self._transition_to(FieldState.FROZEN)
@@ -204,7 +204,7 @@ class EditableField:
             if self.on_freeze:
                 try:
                     self.on_freeze(False)
-                except Exception as e:
+                except Exception:
                     logger.exception("on_freeze callback failed")
 
             self._transition_to(FieldState.VIEW)
@@ -216,7 +216,7 @@ class EditableField:
             feedback = self.feedback_value
             try:
                 self.on_redo(content, feedback)
-            except Exception as e:
+            except Exception:
                 logger.exception("on_redo callback failed")
 
     def save(self) -> None:
@@ -230,7 +230,7 @@ class EditableField:
             if self.on_save:
                 try:
                     self.on_save(self._value)
-                except Exception as e:
+                except Exception:
                     logger.exception("on_save callback failed")
 
     def _rebuild_ui(self) -> None:
@@ -263,71 +263,55 @@ class EditableField:
     def _build_view_state(self) -> None:
         """Build VIEW state: rendered markdown + Edit button + Freeze toggle."""
         ui.label(self.label).classes("text-subtitle2 font-semibold q-mb-xs")
-        self._display_ref = ui.markdown(self._value).classes(
-            "w-full p-4 bg-grey-1 rounded border"
-        )
+        self._display_ref = ui.markdown(self._value).classes("w-full p-4 bg-grey-1 rounded border")
         with ui.row().classes("w-full items-center justify-between q-mt-sm"):
-            self._freeze_toggle_ref = ui.switch(
-                "Freeze", value=False
-            ).props("color=warning")
-            self._freeze_toggle_ref.on_value_change(
-                lambda e: self._on_freeze_toggle(e.value)
-            )
-            ui.button("Edit", icon="edit", on_click=self._on_edit_click).props(
-                "color=secondary"
-            )
+            self._freeze_toggle_ref = ui.switch("Freeze", value=False).props("color=warning")
+            self._freeze_toggle_ref.on_value_change(lambda e: self._on_freeze_toggle(e.value))
+            ui.button("Edit", icon="edit", on_click=self._on_edit_click).props("color=secondary")
 
     def _build_edit_state(self) -> None:
         """Build EDIT state: textarea + Save button + Freeze toggle."""
         ui.label(self.label).classes("text-subtitle2 font-semibold q-mb-xs")
-        self._editor_ref = ui.textarea(
-            value=self._value,
-            label="Edit content",
-        ).classes("w-full").props(f"outlined autogrow rows={max(self.rows, 12)}")
+        self._editor_ref = (
+            ui.textarea(
+                value=self._value,
+                label="Edit content",
+            )
+            .classes("w-full")
+            .props(f"outlined autogrow rows={max(self.rows, 12)}")
+        )
 
         with ui.row().classes("w-full items-center justify-between q-mt-sm"):
-            self._freeze_toggle_ref = ui.switch(
-                "Freeze", value=False
-            ).props("color=warning")
-            self._freeze_toggle_ref.on_value_change(
-                lambda e: self._on_freeze_toggle(e.value)
-            )
-            ui.button("Save", icon="save", on_click=self._on_save_click).props(
-                "color=primary"
-            )
+            self._freeze_toggle_ref = ui.switch("Freeze", value=False).props("color=warning")
+            self._freeze_toggle_ref.on_value_change(lambda e: self._on_freeze_toggle(e.value))
+            ui.button("Save", icon="save", on_click=self._on_save_click).props("color=primary")
 
     def _build_frozen_state(self) -> None:
         """Build FROZEN state: rendered markdown only, no buttons."""
         ui.label(self.label).classes("text-subtitle2 font-semibold q-mb-xs")
-        self._display_ref = ui.markdown(self._value).classes(
-            "w-full p-4 bg-blue-grey-1 rounded border"
-        )
+        self._display_ref = ui.markdown(self._value).classes("w-full p-4 bg-blue-grey-1 rounded border")
         # Frozen indicator with unfreeze toggle
         with ui.row().classes("w-full items-center q-mt-sm"):
-            self._freeze_toggle_ref = ui.switch(
-                "Freeze", value=True
-            ).props("color=warning")
-            self._freeze_toggle_ref.on_value_change(
-                lambda e: self._on_freeze_toggle(e.value)
-            )
+            self._freeze_toggle_ref = ui.switch("Freeze", value=True).props("color=warning")
+            self._freeze_toggle_ref.on_value_change(lambda e: self._on_freeze_toggle(e.value))
 
     def _build_feedback_field(self) -> None:
         """Build the always-editable feedback textarea (no freeze toggle)."""
-        ui.label("Feedback / Review Notes").classes(
-            "text-subtitle2 font-semibold q-mt-md q-mb-xs"
+        ui.label("Feedback / Review Notes").classes("text-subtitle2 font-semibold q-mt-md q-mb-xs")
+        self._feedback_ref = (
+            ui.textarea(
+                value=self._feedback_value,
+                label="Enter feedback for redo...",
+            )
+            .classes("w-full")
+            .props("outlined rows=2")
         )
-        self._feedback_ref = ui.textarea(
-            value=self._feedback_value,
-            label="Enter feedback for redo...",
-        ).classes("w-full").props("outlined rows=2")
 
     def _build_redo_button(self) -> None:
         """Build the Redo button (hidden when frozen)."""
         if self._state != FieldState.FROZEN:
             with ui.row().classes("w-full justify-end q-mt-sm"):
-                ui.button(
-                    "Redo", icon="refresh", on_click=self._on_redo_click
-                ).props("color=accent")
+                ui.button("Redo", icon="refresh", on_click=self._on_redo_click).props("color=accent")
 
     def render(self, container: Any) -> "EditableField":
         """Render the field in the given container and return self for chaining.

@@ -1,6 +1,6 @@
 """mPABS - Main entry point.
 
-Initializes application settings, logging, database, 
+Initializes application settings, logging, database,
 and launches the NiceGUI web interface.
 """
 
@@ -41,16 +41,21 @@ def main() -> None:
     logger.info("mPABS Business Coach starting")
 
     from business_coach.agents.workflow import init_task_lms
+
     lms = configure_dspy(settings)
     init_task_lms(lms)
     logger.info(
         "DSPy configured with LM Studio at %s (canvas=%s, voices=%s, plan=%s, research=%s, chat=%s)",
         settings.lm_studio_base_url,
-        settings.model_canvas, settings.model_voices, settings.model_plan,
-        settings.model_research, settings.model_chat,
+        settings.model_canvas,
+        settings.model_voices,
+        settings.model_plan,
+        settings.model_research,
+        settings.model_chat,
     )
 
     from business_coach.rag.engine import RAGEngine
+
     rag_engine = RAGEngine(settings)
 
     conn = get_connection(settings.database_path)
@@ -64,10 +69,7 @@ def main() -> None:
     def index() -> None:
         if not lm_studio_reachable:
             with ui.card().classes("bg-negative text-white w-full q-pa-sm q-mb-sm"):
-                ui.label(
-                    "⚠ LM Studio is unreachable. "
-                    "AI generation is disabled until the LLM backend is available."
-                )
+                ui.label("⚠ LM Studio is unreachable. AI generation is disabled until the LLM backend is available.")
 
         create_layout(topic_repo, conn, rag_engine=rag_engine, settings=settings)
 
@@ -84,9 +86,7 @@ def cli() -> None:
     import subprocess
     import sys
 
-    raise SystemExit(
-        subprocess.call([sys.executable, "-m", "business_coach.main"])
-    )
+    raise SystemExit(subprocess.call([sys.executable, "-m", "business_coach.main"]))
 
 
 if __name__ in {"__main__", "__mp_main__"}:

@@ -10,10 +10,7 @@ import logging
 import sqlite3
 from datetime import datetime, timezone
 
-from business_coach.db.models import (
-    ChatMessage, WebSearchResult, Topic, BusinessIdeaRecord, 
-    CanvasElement, VoicePersona, PlanSection
-)
+from business_coach.db.models import ChatMessage, WebSearchResult, Topic, CanvasElement, VoicePersona, PlanSection
 from business_coach.logging_config import log_db_error
 
 logger = logging.getLogger(__name__)
@@ -62,10 +59,7 @@ class TopicRepository:
         rows = self._conn.execute(
             "SELECT id, name, created_at FROM topics ORDER BY created_at DESC",
         ).fetchall()
-        return [
-            Topic(id=r[0], name=r[1], created_at=_parse_timestamp(r[2]))
-            for r in rows
-        ]
+        return [Topic(id=r[0], name=r[1], created_at=_parse_timestamp(r[2])) for r in rows]
 
     def get_by_id(self, topic_id: int) -> Topic | None:
         row = self._conn.execute(
@@ -285,11 +279,13 @@ class BusinessIdeaRepository:
 
 class CanvasElementRepository:
     """CRUD operations for Business Model Canvas elements."""
-    
+
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def upsert(self, topic_id: int, element_name: str, content: str, user_feedback: str | None = None, is_frozen: bool = False) -> None:
+    def upsert(
+        self, topic_id: int, element_name: str, content: str, user_feedback: str | None = None, is_frozen: bool = False
+    ) -> None:
         try:
             self._conn.execute(
                 """INSERT INTO canvas_elements
@@ -321,7 +317,7 @@ class CanvasElementRepository:
                 content=r[3],
                 user_feedback=r[4],
                 is_frozen=bool(r[5]),
-                last_updated=_parse_timestamp(r[6])
+                last_updated=_parse_timestamp(r[6]),
             )
             for r in rows
         ]
@@ -335,14 +331,19 @@ class CanvasElementRepository:
         if row is None:
             return None
         return CanvasElement(
-            id=row[0], topic_id=row[1], element_name=row[2],
-            content=row[3], user_feedback=row[4], is_frozen=bool(row[5]), last_updated=_parse_timestamp(row[6])
+            id=row[0],
+            topic_id=row[1],
+            element_name=row[2],
+            content=row[3],
+            user_feedback=row[4],
+            is_frozen=bool(row[5]),
+            last_updated=_parse_timestamp(row[6]),
         )
 
 
 class VoicePersonaRepository:
     """CRUD operations for Voice Personas."""
-    
+
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
@@ -355,11 +356,11 @@ class VoicePersonaRepository:
                 (topic_id, name, description, communication_style),
             )
             self._conn.commit()
-            return cursor.lastrowid # type: ignore
+            return cursor.lastrowid  # type: ignore
         except sqlite3.Error as exc:
             log_db_error(logger, "INSERT", "voice_personas", str(exc))
             raise
-            
+
     def update(self, persona_id: int, name: str, description: str, communication_style: str) -> None:
         try:
             self._conn.execute(
@@ -381,12 +382,16 @@ class VoicePersonaRepository:
         ).fetchall()
         return [
             VoicePersona(
-                id=r[0], topic_id=r[1], name=r[2],
-                description=r[3], communication_style=r[4], last_updated=_parse_timestamp(r[5])
+                id=r[0],
+                topic_id=r[1],
+                name=r[2],
+                description=r[3],
+                communication_style=r[4],
+                last_updated=_parse_timestamp(r[5]),
             )
             for r in rows
         ]
-        
+
     def delete_by_topic(self, topic_id: int) -> None:
         try:
             self._conn.execute("DELETE FROM voice_personas WHERE topic_id = ?", (topic_id,))
@@ -398,11 +403,13 @@ class VoicePersonaRepository:
 
 class PlanSectionRepository:
     """CRUD operations for Business Plan Sections."""
-    
+
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def upsert(self, topic_id: int, section_name: str, content: str, user_feedback: str | None = None, is_frozen: bool = False) -> None:
+    def upsert(
+        self, topic_id: int, section_name: str, content: str, user_feedback: str | None = None, is_frozen: bool = False
+    ) -> None:
         try:
             self._conn.execute(
                 """INSERT INTO plan_sections
@@ -428,8 +435,13 @@ class PlanSectionRepository:
         ).fetchall()
         return [
             PlanSection(
-                id=r[0], topic_id=r[1], section_name=r[2],
-                content=r[3], user_feedback=r[4], is_frozen=bool(r[5]), last_updated=_parse_timestamp(r[6])
+                id=r[0],
+                topic_id=r[1],
+                section_name=r[2],
+                content=r[3],
+                user_feedback=r[4],
+                is_frozen=bool(r[5]),
+                last_updated=_parse_timestamp(r[6]),
             )
             for r in rows
         ]
@@ -443,8 +455,13 @@ class PlanSectionRepository:
         if row is None:
             return None
         return PlanSection(
-            id=row[0], topic_id=row[1], section_name=row[2],
-            content=row[3], user_feedback=row[4], is_frozen=bool(row[5]), last_updated=_parse_timestamp(row[6])
+            id=row[0],
+            topic_id=row[1],
+            section_name=row[2],
+            content=row[3],
+            user_feedback=row[4],
+            is_frozen=bool(row[5]),
+            last_updated=_parse_timestamp(row[6]),
         )
 
 
@@ -460,7 +477,8 @@ class SourcePreferenceRepository:
             for source_name, enabled in preferences.items():
                 cursor.execute(
                     """INSERT INTO source_preferences (topic_id, source_name, enabled)
-                       VALUES (?, ?, ?)""", (topic_id, source_name, enabled),
+                       VALUES (?, ?, ?)""",
+                    (topic_id, source_name, enabled),
                 )
             self._conn.commit()
         except sqlite3.Error as exc:
@@ -487,8 +505,13 @@ class WorkflowStepRepository:
         self._conn = conn
 
     def upsert(
-        self, topic_id: int, step_key: str, content: str, status: str,
-        personality_mode: str = "critical", review_notes: str = "",
+        self,
+        topic_id: int,
+        step_key: str,
+        content: str,
+        status: str,
+        personality_mode: str = "critical",
+        review_notes: str = "",
     ) -> None:
         try:
             self._conn.execute(
@@ -512,11 +535,17 @@ class WorkflowStepRepository:
                    WHERE topic_id = ? AND step_key = ?""",
                 (topic_id, step_key),
             ).fetchone()
-            if row is None: return None
+            if row is None:
+                return None
             return {
-                "id": row[0], "topic_id": row[1], "step_key": row[2],
-                "content": row[3], "status": row[4], "updated_at": row[5],
-                "personality_mode": row[6], "review_notes": row[7],
+                "id": row[0],
+                "topic_id": row[1],
+                "step_key": row[2],
+                "content": row[3],
+                "status": row[4],
+                "updated_at": row[5],
+                "personality_mode": row[6],
+                "review_notes": row[7],
             }
         except sqlite3.Error as exc:
             log_db_error(logger, "SELECT", "workflow_steps", str(exc))
@@ -534,7 +563,8 @@ class PersonalityPreferenceRepository:
             for agent_name, personality_mode in preferences.items():
                 cursor.execute(
                     """INSERT INTO personality_preferences (topic_id, agent_name, personality_mode)
-                       VALUES (?, ?, ?)""", (topic_id, agent_name, personality_mode),
+                       VALUES (?, ?, ?)""",
+                    (topic_id, agent_name, personality_mode),
                 )
             self._conn.commit()
         except sqlite3.Error as exc:

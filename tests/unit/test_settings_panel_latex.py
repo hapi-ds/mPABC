@@ -8,7 +8,6 @@ Validates: Requirements 14.1, 14.2, 14.3
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from business_coach.db.models import CanvasElement, PlanSection, VoicePersona, WebSearchResult
 from business_coach.export.latex_exporter import (
@@ -141,9 +140,7 @@ class TestLatexExportProducesValidFiles:
                     snippet="Market data.",
                 )
             ]
-            result = export_plan_latex(
-                "MyBiz", sections, Path(tmpdir), search_results=search_results
-            )
+            result = export_plan_latex("MyBiz", sections, Path(tmpdir), search_results=search_results)
 
             assert result != Path("")
             content = result.read_text(encoding="utf-8")
@@ -169,7 +166,7 @@ class TestLatexExportErrorHandling:
         # Use a path that cannot be created (nested under a file)
         invalid_dir = Path("/dev/null/impossible_dir")
         try:
-            result = export_canvas_latex("Test", elements, invalid_dir)
+            export_canvas_latex("Test", elements, invalid_dir)
             # If it doesn't raise, it should return empty or the test platform
             # handles /dev/null differently
         except OSError:

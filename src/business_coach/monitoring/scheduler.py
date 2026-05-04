@@ -94,9 +94,7 @@ class MonitoringScheduler:
                 logger.warning("Scheduler is already running")
                 return
             self._running = True
-        logger.info(
-            "Monitoring scheduler started (interval=%dh)", self._interval_hours
-        )
+        logger.info("Monitoring scheduler started (interval=%dh)", self._interval_hours)
         self._schedule_next()
 
     def stop(self) -> None:
@@ -163,9 +161,7 @@ class MonitoringScheduler:
 
     def _search_topic(self, topic_id: int) -> None:
         """Run a prior art search for a single topic and persist results."""
-        logger.info(
-            "Search cycle: running prior art search for topic %s", topic_id
-        )
+        logger.info("Search cycle: running prior art search for topic %s", topic_id)
 
         # Build a minimal PatentWorkflowState with disclosure from DB
         disclosure = self._load_disclosure(topic_id)
@@ -212,5 +208,3 @@ class MonitoringScheduler:
 
         # Use the topic name as a minimal disclosure context
         return {"technical_problem": topic.name, "novel_features": [], "implementation_details": ""}
-
-

@@ -19,11 +19,15 @@ from business_coach.export.latex_exporter import markdown_to_latex
 # Avoids *, #, |, `, -, &, %, $, _, {, }, ~, ^ which interfere with parsing.
 _SAFE_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
 
-_safe_word = st.text(
-    alphabet=_SAFE_ALPHABET,
-    min_size=1,
-    max_size=30,
-).map(lambda s: s.strip()).filter(lambda s: len(s) > 0)
+_safe_word = (
+    st.text(
+        alphabet=_SAFE_ALPHABET,
+        min_size=1,
+        max_size=30,
+    )
+    .map(lambda s: s.strip())
+    .filter(lambda s: len(s) > 0)
+)
 
 # Strategy for generating multiple list items
 _list_items = st.lists(_safe_word, min_size=1, max_size=5)
@@ -52,9 +56,7 @@ class TestMarkdownToLatexElementPreservation:
         markdown = f"## {heading_text}"
         result = markdown_to_latex(markdown)
         expected = f"\\section{{{heading_text}}}"
-        assert expected in result, (
-            f"Expected '\\section{{{heading_text}}}' in output, got: {result}"
-        )
+        assert expected in result, f"Expected '\\section{{{heading_text}}}' in output, got: {result}"
 
     @given(heading_text=_safe_word)
     @settings(max_examples=100)
@@ -63,9 +65,7 @@ class TestMarkdownToLatexElementPreservation:
         markdown = f"### {heading_text}"
         result = markdown_to_latex(markdown)
         expected = f"\\subsection{{{heading_text}}}"
-        assert expected in result, (
-            f"Expected '\\subsection{{{heading_text}}}' in output, got: {result}"
-        )
+        assert expected in result, f"Expected '\\subsection{{{heading_text}}}' in output, got: {result}"
 
     @given(bold_text=_safe_word)
     @settings(max_examples=100)
@@ -74,9 +74,7 @@ class TestMarkdownToLatexElementPreservation:
         markdown = f"**{bold_text}**"
         result = markdown_to_latex(markdown)
         expected = f"\\textbf{{{bold_text}}}"
-        assert expected in result, (
-            f"Expected '\\textbf{{{bold_text}}}' in output, got: {result}"
-        )
+        assert expected in result, f"Expected '\\textbf{{{bold_text}}}' in output, got: {result}"
 
     @given(italic_text=_safe_word)
     @settings(max_examples=100)
@@ -85,9 +83,7 @@ class TestMarkdownToLatexElementPreservation:
         markdown = f"*{italic_text}*"
         result = markdown_to_latex(markdown)
         expected = f"\\textit{{{italic_text}}}"
-        assert expected in result, (
-            f"Expected '\\textit{{{italic_text}}}' in output, got: {result}"
-        )
+        assert expected in result, f"Expected '\\textit{{{italic_text}}}' in output, got: {result}"
 
     @given(items=_list_items)
     @settings(max_examples=100)
@@ -95,16 +91,10 @@ class TestMarkdownToLatexElementPreservation:
         """- item → \\begin{itemize} and \\item in LaTeX output."""
         markdown = "\n".join(f"- {item}" for item in items)
         result = markdown_to_latex(markdown)
-        assert "\\begin{itemize}" in result, (
-            f"Expected '\\begin{{itemize}}' in output, got: {result}"
-        )
-        assert "\\end{itemize}" in result, (
-            f"Expected '\\end{{itemize}}' in output, got: {result}"
-        )
+        assert "\\begin{itemize}" in result, f"Expected '\\begin{{itemize}}' in output, got: {result}"
+        assert "\\end{itemize}" in result, f"Expected '\\end{{itemize}}' in output, got: {result}"
         for item in items:
-            assert f"\\item {item}" in result, (
-                f"Expected '\\item {item}' in output, got: {result}"
-            )
+            assert f"\\item {item}" in result, f"Expected '\\item {item}' in output, got: {result}"
 
     @given(items=_list_items)
     @settings(max_examples=100)
@@ -112,16 +102,10 @@ class TestMarkdownToLatexElementPreservation:
         """1. item → \\begin{enumerate} and \\item in LaTeX output."""
         markdown = "\n".join(f"{i + 1}. {item}" for i, item in enumerate(items))
         result = markdown_to_latex(markdown)
-        assert "\\begin{enumerate}" in result, (
-            f"Expected '\\begin{{enumerate}}' in output, got: {result}"
-        )
-        assert "\\end{enumerate}" in result, (
-            f"Expected '\\end{{enumerate}}' in output, got: {result}"
-        )
+        assert "\\begin{enumerate}" in result, f"Expected '\\begin{{enumerate}}' in output, got: {result}"
+        assert "\\end{enumerate}" in result, f"Expected '\\end{{enumerate}}' in output, got: {result}"
         for item in items:
-            assert f"\\item {item}" in result, (
-                f"Expected '\\item {item}' in output, got: {result}"
-            )
+            assert f"\\item {item}" in result, f"Expected '\\item {item}' in output, got: {result}"
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +130,7 @@ _ESCAPE_MAP = {
 
 # Strategy: generate text with random special characters interspersed
 _text_with_special_chars = st.text(
-    alphabet=st.sampled_from(
-        list("abcdefghijklmnopqrstuvwxyz ") + _SPECIAL_CHARS
-    ),
+    alphabet=st.sampled_from(list("abcdefghijklmnopqrstuvwxyz ") + _SPECIAL_CHARS),
     min_size=1,
     max_size=50,
 ).filter(lambda s: any(c in s for c in _SPECIAL_CHARS) and s.strip() != "")
@@ -308,9 +290,7 @@ def _extract_latex_structure(text: str) -> list[tuple[str, str]]:
 # Strategy: generate a structured markdown document with safe text
 _structured_markdown = st.builds(
     lambda sections, items, paragraphs: "\n\n".join(
-        [f"## {s}" for s in sections]
-        + ["\n".join(f"- {item}" for item in items)]
-        + [p for p in paragraphs]
+        [f"## {s}" for s in sections] + ["\n".join(f"- {item}" for item in items)] + [p for p in paragraphs]
     ),
     sections=st.lists(_safe_word, min_size=1, max_size=3),
     items=st.lists(_safe_word, min_size=1, max_size=3),

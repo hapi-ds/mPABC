@@ -94,7 +94,9 @@ class RAGEngine:
             )
 
     def index_with_embeddings(
-        self, topic_id: int, documents: list[dict],
+        self,
+        topic_id: int,
+        documents: list[dict],
     ) -> None:
         """Build the index from documents that already have embeddings.
 
@@ -154,12 +156,13 @@ class RAGEngine:
 
         logger.info(
             "Indexed %d docs for topic %d (%d with stored embeddings, %d new)",
-            len(documents), topic_id, len(nodes_with_emb), len(nodes_without_emb),
+            len(documents),
+            topic_id,
+            len(nodes_with_emb),
+            len(nodes_without_emb),
         )
 
-    def query(
-        self, topic_id: int, query_text: str, top_k: int = 5
-    ) -> list[dict]:
+    def query(self, topic_id: int, query_text: str, top_k: int = 5) -> list[dict]:
         """Retrieve relevant documents for a query within a topic scope.
 
         Args:
@@ -199,9 +202,11 @@ class RAGEngine:
             if metadata is None or callable(metadata):
                 inner = getattr(node, "node", node)
                 metadata = getattr(inner, "metadata", {})
-            output.append({
-                "text": text,
-                "score": score,
-                "metadata": metadata,
-            })
+            output.append(
+                {
+                    "text": text,
+                    "score": score,
+                    "metadata": metadata,
+                }
+            )
         return output

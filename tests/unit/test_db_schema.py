@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from business_coach.db.schema import SCHEMA_SQL, get_connection, init_schema, _initialized_databases
+from business_coach.db.schema import get_connection, init_schema, _initialized_databases
 
 
 EXPECTED_TABLES = {
@@ -30,27 +30,21 @@ class TestInitSchema:
 
     def test_creates_all_tables(self, in_memory_db: sqlite3.Connection) -> None:
         """All five tables should exist after schema init."""
-        cursor = in_memory_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-        )
+        cursor = in_memory_db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
         tables = {row[0] for row in cursor.fetchall()}
         assert tables == EXPECTED_TABLES
 
     def test_idempotent(self, in_memory_db: sqlite3.Connection) -> None:
         """Calling init_schema twice should not raise."""
         init_schema(in_memory_db)
-        cursor = in_memory_db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-        )
+        cursor = in_memory_db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
         tables = {row[0] for row in cursor.fetchall()}
         assert tables == EXPECTED_TABLES
 
     def test_foreign_keys_enforced(self, in_memory_db: sqlite3.Connection) -> None:
         """Inserting a research_session with invalid topic_id should raise IntegrityError."""
         with pytest.raises(sqlite3.IntegrityError):
-            in_memory_db.execute(
-                "INSERT INTO research_sessions (topic_id, query) VALUES (999, 'test')"
-            )
+            in_memory_db.execute("INSERT INTO research_sessions (topic_id, query) VALUES (999, 'test')")
 
     def test_topics_unique_name(self, in_memory_db: sqlite3.Connection) -> None:
         """Duplicate topic names should raise IntegrityError."""
@@ -79,9 +73,7 @@ class TestGetConnection:
         _initialized_databases.discard(str(db_path.resolve()))
         conn = get_connection(db_path)
         try:
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-            )
+            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
             tables = {row[0] for row in cursor.fetchall()}
             assert tables == EXPECTED_TABLES
         finally:
