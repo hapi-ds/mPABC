@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.3 (2026-05-04)
+
+### Bug Fixes
+
+- Import error on windows on problems with weasyprint
+  ([`2d057b0`](https://github.com/hapi-ds/mPABC/commit/2d057b0e55fbaa5775d46df0975f2c69e3b288d7))
+
+
 ## v1.0.2 (2026-05-04)
 
 ### Bug Fixes
