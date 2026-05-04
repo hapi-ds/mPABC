@@ -20,7 +20,13 @@ from business_coach.export.latex_exporter import (
     export_voices_latex,
     export_plan_latex,
 )
-from business_coach.export.pdf_exporter import export_canvas_pdf, export_voices_pdf, export_plan_pdf, get_template_html
+from business_coach.export.pdf_exporter import (
+    WEASYPRINT_AVAILABLE,
+    export_canvas_pdf,
+    export_plan_pdf,
+    export_voices_pdf,
+    get_template_html,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +88,12 @@ def create_settings_panel(container: ui.column, topic_id: int, conn: sqlite3.Con
         # PDF Export Section
         ui.label("Professional PDF (with Markdown Support)").classes("text-h6 font-bold q-mb-sm")
 
+        if not WEASYPRINT_AVAILABLE:
+            ui.label(
+                "⚠ WeasyPrint is not installed — PDF export is disabled. "
+                "Install it with: uv add weasyprint"
+            ).classes("text-body2 text-negative q-mb-sm")
+
         with ui.row().classes("w-full gap-4"):
 
             def export_canvas_pdf_with_preview():
@@ -122,7 +134,7 @@ def create_settings_panel(container: ui.column, topic_id: int, conn: sqlite3.Con
 
             ui.button("Export Canvas (.pdf)", on_click=export_canvas_pdf_with_preview).props(
                 "color=deep-orange icon=file_download"
-            )
+            ).set_enabled(WEASYPRINT_AVAILABLE)
 
             def export_voices_pdf_with_preview():
                 voices = voices_repo.get_by_topic(topic_id)
@@ -160,7 +172,7 @@ def create_settings_panel(container: ui.column, topic_id: int, conn: sqlite3.Con
 
             ui.button("Export Voices (.pdf)", on_click=export_voices_pdf_with_preview).props(
                 "color=deep-orange icon=file_download"
-            )
+            ).set_enabled(WEASYPRINT_AVAILABLE)
 
             def export_plan_pdf_with_preview():
                 sections = plan_repo.get_by_topic(topic_id)
@@ -198,7 +210,7 @@ def create_settings_panel(container: ui.column, topic_id: int, conn: sqlite3.Con
 
             ui.button("Export Business Plan (.pdf)", on_click=export_plan_pdf_with_preview).props(
                 "color=deep-orange icon=file_download"
-            )
+            ).set_enabled(WEASYPRINT_AVAILABLE)
 
         ui.separator().classes("w-full q-my-lg")
 

@@ -1,13 +1,32 @@
-"""PDF generation for mPABS using Jinja2 + WeasyPrint."""
+"""PDF generation for mPABS using Jinja2 + WeasyPrint.
+
+WeasyPrint is an optional dependency. When it is not installed (common on
+Windows where native libraries are hard to set up), the module still loads
+but the PDF export functions raise ``WeasyPrintUnavailableError``.  Use
+:data:`WEASYPRINT_AVAILABLE` to check at runtime before offering PDF export.
+"""
 
 import logging
 from pathlib import Path
 from datetime import datetime
 
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
 
 logger = logging.getLogger(__name__)
+
+# --- Optional WeasyPrint import -------------------------------------------
+WEASYPRINT_AVAILABLE: bool = False
+"""``True`` when WeasyPrint was imported successfully."""
+
+_HTML = None  # will hold weasyprint.HTML if available
+
+try:
+    from weasyprint import HTML as _WeasyHTML  # noqa: N811
+
+    _HTML = _WeasyHTML
+    WEASYPRINT_AVAILABLE = True
+except (ImportError, OSError) as exc:
+    logger.info("WeasyPrint not available – PDF export disabled (%s)", exc)
 
 # Load templates from file system
 template_dir = Path(__file__).parent.parent / "templates"
@@ -101,6 +120,19 @@ def _sort_plan_sections(sections: list) -> list:
     return result
 
 
+class WeasyPrintUnavailableError(RuntimeError):
+    """Raised when a PDF export is attempted but WeasyPrint is not installed."""
+
+
+def _require_weasyprint() -> None:
+    """Raise ``WeasyPrintUnavailableError`` if WeasyPrint is missing."""
+    if not WEASYPRINT_AVAILABLE:
+        raise WeasyPrintUnavailableError(
+            "WeasyPrint is not installed or could not be loaded. "
+            "PDF export is unavailable. Install it with: uv add weasyprint"
+        )
+
+
 def _render_template(template_name: str, context: dict) -> str:
     """Render a Jinja2 template with the given context."""
     try:
@@ -112,7 +144,13 @@ def _render_template(template_name: str, context: dict) -> str:
 
 
 def export_canvas_pdf(topic_name: str, canvas_elements: list, output_dir: Path) -> Path:
-    """Export Business Model Canvas to PDF."""
+    """Export Business Model Canvas to PDF.
+
+    Raises:
+        WeasyPrintUnavailableError: If WeasyPrint is not installed.
+    """
+    _require_weasyprint()
+
     context = {
         "topic_name": topic_name,
         "generated_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -120,7 +158,7 @@ def export_canvas_pdf(topic_name: str, canvas_elements: list, output_dir: Path) 
     }
 
     html_content = _render_template("canvas_template.html", context)
-    html = HTML(string=html_content, base_url=str(template_dir))
+    html = _HTML(string=html_content, base_url=str(template_dir))
 
     filename = f"{topic_name.replace(' ', '_')}_Canvas.pdf"
     out_path = output_dir / filename
@@ -131,7 +169,13 @@ def export_canvas_pdf(topic_name: str, canvas_elements: list, output_dir: Path) 
 
 
 def export_voices_pdf(topic_name: str, voices: list, output_dir: Path) -> Path:
-    """Export Target Personas to PDF."""
+    """Export Target Personas to PDF.
+
+    Raises:
+        WeasyPrintUnavailableError: If WeasyPrint is not installed.
+    """
+    _require_weasyprint()
+
     context = {
         "topic_name": topic_name,
         "generated_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -139,7 +183,7 @@ def export_voices_pdf(topic_name: str, voices: list, output_dir: Path) -> Path:
     }
 
     html_content = _render_template("voices_template.html", context)
-    html = HTML(string=html_content, base_url=str(template_dir))
+    html = _HTML(string=html_content, base_url=str(template_dir))
 
     filename = f"{topic_name.replace(' ', '_')}_Voices.pdf"
     out_path = output_dir / filename
@@ -150,7 +194,13 @@ def export_voices_pdf(topic_name: str, voices: list, output_dir: Path) -> Path:
 
 
 def export_plan_pdf(topic_name: str, plan_sections: list, output_dir: Path) -> Path:
-    """Export Business Plan to PDF."""
+    """Export Business Plan to PDF.
+
+    Raises:
+        WeasyPrintUnavailableError: If WeasyPrint is not installed.
+    """
+    _require_weasyprint()
+
     # Sort sections in correct order
     sorted_sections = _sort_plan_sections(plan_sections)
 
@@ -161,7 +211,7 @@ def export_plan_pdf(topic_name: str, plan_sections: list, output_dir: Path) -> P
     }
 
     html_content = _render_template("plan_template.html", context)
-    html = HTML(string=html_content, base_url=str(template_dir))
+    html = _HTML(string=html_content, base_url=str(template_dir))
 
     filename = f"{topic_name.replace(' ', '_')}_BusinessPlan.pdf"
     out_path = output_dir / filename
