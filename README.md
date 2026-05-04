@@ -1,6 +1,24 @@
-# mPABS — my Personal Artificial Business Coach
+# mPABC — my Personal Artificial Business Coach
 
-An AI-powered business coaching application that helps you develop business ideas from concept to a complete business plan. Built with local-first LLMs via LM Studio, NiceGUI for the web interface, and DSPy for structured AI generation.
+<p align="center">
+  <a href="https://github.com/hapi-ds/mPABC/releases">
+    <img src="https://img.shields.io/github/v/release/hapi-ds/mPABC?style=flat-square&color=blue" alt="Latest Release">
+  </a>
+  <img src="https://img.shields.io/badge/python-3.13-blue?style=flat-square&logo=python&logoColor=white" alt="Python Version">
+  <a href="https://github.com/hapi-ds/mPABC/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/hapi-ds/mPABC?style=flat-square" alt="License">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/hapi-ds/mPABC/actions">
+    <img src="https://github.com/hapi-ds/mPAPA/actions/workflows/ci.yml/badge.svg" alt="CI Pipeline Status">
+  </a>
+</p>
+
+It all started with **mPAPA** ([github.com/hapi-ds/mPAPA](https://github.com/hapi-ds/mPAPA)), a project where I discovered how surprisingly well local LLMs could perform, even with smaller models. The key was to **break down complex tasks into granular, manageable steps and delegate them to specialized agents** (funnily enough, something I am already well-acquainted with from years of experience in project management). This modular success inspired me to develop a whole series of these "mPAx" tools. Since my next challenge involved drafting business plans, mPABC was born.
+
+An AI-powered business coaching application that helps you develop business ideas from concept to a complete business plan. Built with local-first LLMs via LM Studio, NiceGUI for the web interface, and DSPy for structured AI generation.[cite: 1]
 
 ## Features
 
