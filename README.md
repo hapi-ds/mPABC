@@ -16,9 +16,11 @@
   </a>
 </p>
 
-It all started with **mPAPA** ([github.com/hapi-ds/mPAPA](https://github.com/hapi-ds/mPAPA)), a project where I discovered how surprisingly well local LLMs could perform, even with smaller models. The key was to **break down complex tasks into granular, manageable steps and delegate them to specialized agents** (funnily enough, something I am already well-acquainted with from years of experience in project management). This modular success inspired me to develop a whole series of these "mPAx" tools. Since my next challenge involved drafting business plans, mPABC was born.
+It all started with **mPAPA** ([github.com/hapi-ds/mPAPA](https://github.com/hapi-ds/mPAPA)), a project where I discovered how surprisingly well local LLMs could perform, even with smaller models. The key was to **break down complex tasks into granular, manageable steps and delegate them to specialized agents*.
 
-An AI-powered business coaching application that helps you develop business ideas from concept to a complete business plan. Built with local-first LLMs via LM Studio, NiceGUI for the web interface, and DSPy for structured AI generation.[cite: 1]
+Funnily enough, this is a principle I’ve known for years from project management: a successful project relies on refined tasks, solvable and understood by the executor. In truly agile projects, the "Ready" state is crucial—a task is only ready to be implemented when its complexity has been reduced to a clear, actionable level. This approach is rooted in problem-solving competence rather than pure "specialism". By applying this to AI—ensuring every prompt is "Ready" for the model—even small local LLMs can deliver professional-grade business results.
+
+This modular success inspired me to develop a whole series of these "mPAx" tools. Since my next challenge involved drafting business plans, mPABC was born.
 
 ## Features
 
