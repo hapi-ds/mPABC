@@ -172,6 +172,9 @@ def get_connection(database_path: Path) -> sqlite3.Connection:
         # Add frozen column to existing tables (if upgrading from older version)
         add_frozen_columns(conn)
 
+        # Add voice_statement column to voice_personas (migration for voice statement feature)
+        add_voice_statement_column(conn)
+
         _initialized_databases.add(db_key)
 
     return conn
@@ -196,3 +199,20 @@ def add_frozen_columns(conn: sqlite3.Connection) -> None:
         except Exception:
             # Column might already exist or table might not exist
             pass
+
+
+def add_voice_statement_column(conn: sqlite3.Connection) -> None:
+    """Add voice_statement column to voice_personas table if it doesn't exist.
+
+    Migration for voice statement feature. Defaults to empty string for
+    existing rows. Safe to call multiple times (idempotent).
+    """
+    try:
+        cursor = conn.execute("PRAGMA table_info(voice_personas)")
+        columns = [row[1] for row in cursor.fetchall()]
+
+        if "voice_statement" not in columns:
+            conn.execute("ALTER TABLE voice_personas ADD COLUMN voice_statement TEXT NOT NULL DEFAULT ''")
+    except Exception:
+        # Column might already exist or table might not exist
+        pass

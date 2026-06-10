@@ -105,6 +105,7 @@ class VoicePersona(BaseModel):
     name: str
     description: str
     communication_style: str
+    voice_statement: str = ""
     last_updated: datetime = Field(default_factory=_utc_now)
 
 

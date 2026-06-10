@@ -18,7 +18,18 @@ class VoicePersonaGenerator(dspy.Signature):
     business_canvas = dspy.InputField(desc="The completed business model canvas elements")
     num_personas = dspy.InputField(desc="Number of personas to generate")
 
-    personas_json = dspy.OutputField(desc="JSON list of objects with 'name', 'description', and 'communication_style'")
+    personas_json = dspy.OutputField(desc="A valid JSON array of objects, each with keys 'name', 'description', and 'communication_style'. Ensure proper commas between objects. Example: [{\"name\": \"...\", \"description\": \"...\", \"communication_style\": \"...\"}]")
+
+
+class VoiceStatementGenerator(dspy.Signature):
+    """Generate what a persona would say about the business idea in their unique communication style."""
+
+    persona_name = dspy.InputField(desc="The name of the persona")
+    persona_description = dspy.InputField(desc="Description of the persona's background and perspective")
+    communication_style = dspy.InputField(desc="The persona's communication style")
+    business_canvas = dspy.InputField(desc="The business model canvas text")
+
+    voice_statement = dspy.OutputField(desc="A paragraph expressing what this persona would say about the business idea, written in their unique communication style")
 
 
 class PlanSectionGenerator(dspy.Signature):
@@ -72,22 +83,23 @@ def configure_dspy(settings) -> dict[str, dspy.LM]:
         Dict mapping task name to configured dspy.LM instance.
     """
 
-    def _make_lm(model_name: str) -> dspy.LM:
+    def _make_lm(model_name: str, cache: bool = True) -> dspy.LM:
         return dspy.LM(
             model=f"openai/{model_name}",
             api_base=settings.lm_studio_base_url,
             api_key=settings.lm_studio_api_key,
             max_tokens=settings.default_max_tokens,
+            cache=cache,
         )
 
     lms = {
         "canvas": _make_lm(settings.model_canvas),
-        "voices": _make_lm(settings.model_voices),
+        "voices": _make_lm(settings.model_voices, cache=False),
         "plan": _make_lm(settings.model_plan),
         "research": _make_lm(settings.model_research),
         "chat": _make_lm(settings.model_chat),
     }
 
     # Set chat model as the global default
-    dspy.configure(lm=lms["chat"])
+    dspy.configure(lm=lms["chat"], adapter=dspy.ChatAdapter(use_json_adapter_fallback=False))
     return lms

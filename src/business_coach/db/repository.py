@@ -347,13 +347,13 @@ class VoicePersonaRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def create(self, topic_id: int, name: str, description: str, communication_style: str) -> int:
+    def create(self, topic_id: int, name: str, description: str, communication_style: str, voice_statement: str = "") -> int:
         try:
             cursor = self._conn.execute(
                 """INSERT INTO voice_personas
-                   (topic_id, name, description, communication_style, last_updated)
-                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)""",
-                (topic_id, name, description, communication_style),
+                   (topic_id, name, description, communication_style, voice_statement, last_updated)
+                   VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+                (topic_id, name, description, communication_style, voice_statement),
             )
             self._conn.commit()
             return cursor.lastrowid  # type: ignore
@@ -361,13 +361,13 @@ class VoicePersonaRepository:
             log_db_error(logger, "INSERT", "voice_personas", str(exc))
             raise
 
-    def update(self, persona_id: int, name: str, description: str, communication_style: str) -> None:
+    def update(self, persona_id: int, name: str, description: str, communication_style: str, voice_statement: str = "") -> None:
         try:
             self._conn.execute(
                 """UPDATE voice_personas SET
-                   name = ?, description = ?, communication_style = ?, last_updated = CURRENT_TIMESTAMP
+                   name = ?, description = ?, communication_style = ?, voice_statement = ?, last_updated = CURRENT_TIMESTAMP
                    WHERE id = ?""",
-                (name, description, communication_style, persona_id),
+                (name, description, communication_style, voice_statement, persona_id),
             )
             self._conn.commit()
         except sqlite3.Error as exc:
@@ -376,7 +376,7 @@ class VoicePersonaRepository:
 
     def get_by_topic(self, topic_id: int) -> list[VoicePersona]:
         rows = self._conn.execute(
-            """SELECT id, topic_id, name, description, communication_style, last_updated
+            """SELECT id, topic_id, name, description, communication_style, voice_statement, last_updated
                FROM voice_personas WHERE topic_id = ?""",
             (topic_id,),
         ).fetchall()
@@ -387,7 +387,8 @@ class VoicePersonaRepository:
                 name=r[2],
                 description=r[3],
                 communication_style=r[4],
-                last_updated=_parse_timestamp(r[5]),
+                voice_statement=r[5] or "",
+                last_updated=_parse_timestamp(r[6]),
             )
             for r in rows
         ]

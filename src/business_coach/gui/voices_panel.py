@@ -3,7 +3,7 @@ import logging
 import sqlite3
 from nicegui import ui
 from business_coach.db.repository import CanvasElementRepository, VoicePersonaRepository
-from business_coach.agents.workflow import generate_voice_personas
+from business_coach.agents.workflow import generate_voice_personas, generate_voice_statement
 from business_coach.gui.editable_field import EditableField
 
 logger = logging.getLogger(__name__)
@@ -97,31 +97,57 @@ def create_voices_panel(
                             rows=4,
                         ).render(desc_container)
 
+                        # Display voice statement if available
+                        if p.voice_statement:
+                            with ui.element("blockquote").classes(
+                                "w-full q-mt-sm p-3 bg-blue-50 rounded border-l-4 border-blue-300"
+                            ):
+                                ui.label(p.voice_statement).classes("text-body2 italic text-grey-8")
+
                         ui.label(f"Style: {p.communication_style}").classes("text-caption italic q-mt-sm")
 
         async def run_generation():
             spinner.set_visibility(True)
             try:
                 canvas_text = "\n".join([f"{e.element_name}:\n{e.content}" for e in canvas_elements])
-                num = int(num_voices.value)
+
+                # Validate num_voices - safe default to 3
+                try:
+                    num = int(num_voices.value) if num_voices.value is not None else 3
+                    if num <= 0:
+                        num = 3
+                    num = min(num, 20)  # clamp to max 20
+                except (TypeError, ValueError):
+                    num = 3
 
                 results = await asyncio.to_thread(generate_voice_personas, canvas_text, num)
 
-                # Clear existing personas using passed-in repo
-                voices_repo.delete_by_topic(topic_id)
+                # Only delete existing personas AFTER successful generation with results
+                if results:
+                    voices_repo.delete_by_topic(topic_id)
 
-                # Save new personas
-                for r in results:
-                    voices_repo.create(
-                        topic_id, r.get("name", "Unknown"), r.get("description", ""), r.get("communication_style", "")
-                    )
-                ui.notify(f"Generated {len(results)} personas.", type="positive")
+                    # Generate voice statements and save
+                    for r in results:
+                        voice_statement = await asyncio.to_thread(
+                            generate_voice_statement, r, canvas_text, conn, topic_id
+                        )
+                        voices_repo.create(
+                            topic_id,
+                            r.get("name", "Unknown"),
+                            r.get("description", ""),
+                            r.get("communication_style", ""),
+                            voice_statement,
+                        )
+                    ui.notify(f"Generated {len(results)} personas.", type="positive")
+                else:
+                    ui.notify("Generation returned no personas. Existing data preserved.", type="warning")
             except Exception as e:
                 ui.notify(f"Generation failed: {e}", type="negative")
             finally:
                 spinner.set_visibility(False)
                 # Use fresh repo to display latest data
                 display_personas()
+                personas_container.update()  # FIX: push DOM update to NiceGUI client
 
         ui.button("Generate Voices", on_click=run_generation).props("color=primary")
         display_personas()

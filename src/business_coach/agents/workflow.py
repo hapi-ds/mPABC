@@ -6,6 +6,7 @@ import sqlite3
 from business_coach.dspy_modules.modules import (
     BusinessCanvasGenerator,
     VoicePersonaGenerator,
+    VoiceStatementGenerator,
     PlanSectionGenerator,
     SearchSectionGenerator,
     SearchResultScorer,
@@ -294,6 +295,28 @@ def generate_canvas_element(
         return f"Error generating {element_name}."
 
 
+def _repair_json(text: str) -> str:
+    """Attempt to repair common JSON issues from LLM output.
+
+    Handles:
+    - Trailing commas before ] or }
+    - Missing commas between adjacent objects in an array: }\\n  {
+
+    Args:
+        text: Raw JSON string that may have syntax issues.
+
+    Returns:
+        Repaired JSON string.
+    """
+    import re
+
+    # Remove trailing commas before closing brackets/braces
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+    # Add missing commas between adjacent objects: }\n    { (common when LLM forgets comma between array items)
+    text = re.sub(r"}\s*\n(\s*){", r"},\n\1{", text)
+    return text
+
+
 def generate_voice_personas(
     business_canvas_text: str,
     num_personas: int,
@@ -317,21 +340,81 @@ def generate_voice_personas(
     signature = signature.with_instructions(f"{composed}\n\n{original_instructions}")
 
     agent = dspy.Predict(signature)
+    last_error = None
+    voices_lm = _task_lms.get("voices")
+
+    for attempt in range(2):  # retry once on JSON parse failure
+        try:
+            with dspy.context(lm=voices_lm):
+                result = agent(business_canvas=business_canvas_text, num_personas=str(num_personas))
+
+            personas_text = result.personas_json
+
+            # Strip markdown json blocks if present
+            if personas_text.startswith("```json"):
+                personas_text = personas_text[7:-3]
+            elif personas_text.startswith("```"):
+                personas_text = personas_text[3:-3]
+
+            personas_text = personas_text.strip()
+
+            # Try parsing as-is first, then attempt repair on failure
+            try:
+                parsed = json.loads(personas_text)
+            except json.JSONDecodeError:
+                repaired = _repair_json(personas_text)
+                parsed = json.loads(repaired)
+
+            if isinstance(parsed, list):
+                return parsed
+            return []
+        except json.JSONDecodeError as e:
+            last_error = e
+            logger.warning(f"JSON parse failed on attempt {attempt + 1}, retrying: {e}")
+            continue
+        except Exception as e:
+            logger.error(f"Failed to generate personas: {e}")
+            return []
+
+    logger.error(f"Failed to generate personas after 2 attempts: {last_error}")
+    return []
+
+
+def generate_voice_statement(
+    persona: dict,
+    business_canvas_text: str,
+    conn: sqlite3.Connection | None = None,
+    topic_id: int | None = None,
+) -> str:
+    """Generate a voice statement for a single persona.
+
+    Args:
+        persona: Dict with 'name', 'description', 'communication_style' keys.
+        business_canvas_text: The completed business model canvas text.
+        conn: Optional SQLite connection for personality mode lookup.
+        topic_id: Optional topic ID for personality mode lookup.
+
+    Returns:
+        The generated voice statement string, or empty string on error.
+    """
+    signature = VoiceStatementGenerator
+    composed = _compose_prompt(topic_id, conn, "voice_personas")
+    original_instructions = signature.__doc__ or ""
+    signature = signature.with_instructions(f"{composed}\n\n{original_instructions}")
+
+    agent = dspy.Predict(signature)
     try:
         with dspy.context(lm=_task_lms.get("voices")):
-            result = agent(business_canvas=business_canvas_text, num_personas=str(num_personas))
-        personas_text = result.personas_json
-
-        # Strip markdown json blocks if present
-        if personas_text.startswith("```json"):
-            personas_text = personas_text[7:-3]
-        elif personas_text.startswith("```"):
-            personas_text = personas_text[3:-3]
-
-        return json.loads(personas_text.strip())
+            result = agent(
+                persona_name=persona.get("name", ""),
+                persona_description=persona.get("description", ""),
+                communication_style=persona.get("communication_style", ""),
+                business_canvas=business_canvas_text,
+            )
+        return result.voice_statement
     except Exception as e:
-        logger.error(f"Failed to generate personas: {e}")
-        return []
+        logger.error(f"Failed to generate voice statement for '{persona.get('name', 'Unknown')}': {e}")
+        return ""
 
 
 def generate_plan_section(
