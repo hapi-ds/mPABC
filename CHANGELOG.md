@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.8 (2026-06-10)
+
+### Bug Fixes
+
+- Ruff format
+  ([`7789352`](https://github.com/hapi-ds/mPABC/commit/778935235c77b8e3c4494b1860e4cb1b959bf2cf))
+
+
 ## v1.0.7 (2026-06-10)
 
 

@@ -1,6 +1,6 @@
 [project]
 name = "business-coach"
-version = "1.0.7"
+version = "1.0.8"
 description = "AI-powered Personal Artificial Business Coach"
 readme = "README.md"
 authors = [
