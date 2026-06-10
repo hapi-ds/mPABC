@@ -1,9 +1,26 @@
+import logging
+
 from ddgs import DDGS
+
 from business_coach.db.models import WebSearchResult
+from business_coach.exceptions import SearchServiceError
+
+logger = logging.getLogger(__name__)
 
 
 def search_web(query: str, max_results: int = 10) -> list[WebSearchResult]:
-    """Perform a web search using DuckDuckGo and return WebSearchResult objects."""
+    """Perform a web search using DuckDuckGo and return WebSearchResult objects.
+
+    Args:
+        query: The search query string.
+        max_results: Maximum number of results to return.
+
+    Returns:
+        A list of WebSearchResult objects.
+
+    Raises:
+        SearchServiceError: When DuckDuckGo is unavailable or the search fails.
+    """
     results = []
     try:
         ddgs = DDGS()
@@ -17,7 +34,6 @@ def search_web(query: str, max_results: int = 10) -> list[WebSearchResult]:
                 )
             )
     except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).error(f"Search failed: {e}")
+        logger.error(f"Search failed: {e}")
+        raise SearchServiceError("DuckDuckGo", e) from e
     return results

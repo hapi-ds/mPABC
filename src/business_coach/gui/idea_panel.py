@@ -101,6 +101,9 @@ def create_idea_panel(
             ui.button("Generate Research Categories", on_click=generate_sections).props("color=secondary")
 
             async def run_all_searches():
+                if not run_handlers:
+                    ui.notify("Please generate research categories first.", type="warning")
+                    return
                 for handler in run_handlers:
                     await handler()
 
@@ -151,8 +154,11 @@ def create_idea_panel(
                         plog.push(f"Starting search for: {eq.value}")
                         ra.clear()
 
+                        progress_messages: list[str] = []
+
                         def p_cb(msg: str):
                             plog.push(msg)
+                            progress_messages.append(msg)
 
                         try:
                             results = await asyncio.to_thread(
@@ -168,8 +174,43 @@ def create_idea_panel(
                             )
 
                             if not results:
-                                with ra:
-                                    ui.label("No relevant results found.").classes("text-grey")
+                                # Determine cause of empty results from progress messages
+                                has_service_failure = any(
+                                    "unavailable" in m.lower() or "search service" in m.lower()
+                                    for m in progress_messages
+                                )
+                                has_threshold_filter = any(
+                                    "threshold" in m.lower() for m in progress_messages
+                                )
+
+                                if has_service_failure:
+                                    # Find the specific error message
+                                    error_msg = next(
+                                        (m for m in progress_messages
+                                         if "unavailable" in m.lower() or "search service" in m.lower()),
+                                        "Search service unavailable",
+                                    )
+                                    with ra:
+                                        with ui.card().classes("w-full q-mb-sm bg-red-1 border-left-4 border-red"):
+                                            ui.label("⚠ Search Service Error").classes(
+                                                "text-subtitle2 font-bold text-red-8"
+                                            )
+                                            ui.label(error_msg).classes("text-body2 text-red-7")
+                                elif has_threshold_filter:
+                                    # Find the threshold message
+                                    threshold_msg = next(
+                                        (m for m in progress_messages if "threshold" in m.lower()),
+                                        "Results found but none met the relevance threshold.",
+                                    )
+                                    with ra:
+                                        with ui.card().classes("w-full q-mb-sm bg-amber-1 border-left-4 border-amber"):
+                                            ui.label("ℹ Threshold Filtered").classes(
+                                                "text-subtitle2 font-bold text-amber-9"
+                                            )
+                                            ui.label(threshold_msg).classes("text-body2 text-amber-8")
+                                else:
+                                    with ra:
+                                        ui.label("No relevant results found.").classes("text-grey")
                             else:
                                 for r in results:
                                     with ra:

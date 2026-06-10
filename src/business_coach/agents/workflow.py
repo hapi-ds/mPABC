@@ -19,6 +19,7 @@ from business_coach.db.repository import (
     SpecialistOverrideRepository,
 )
 from business_coach.agents.specialists import get_specialist, SPECIALIST_REGISTRY, SpecialistPersona
+from business_coach.exceptions import SearchServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -186,47 +187,68 @@ def run_section_search(
     session_id = session_repo.create(topic_id, search_query)
     try:
         results = search_web(search_query, max_results=5)
-        progress_callback(f"Found {len(results)} results. Scoring...")
-        for res in results:
-            # Score the result
+    except SearchServiceError as e:
+        logger.error(f"Search service unavailable for query '{search_query}': {e}")
+        progress_callback(f"Search service unavailable: {e}")
+        return saved_results
+
+    progress_callback(f"Found {len(results)} results. Scoring...")
+
+    # Phase 1: Score each result individually (one failure doesn't cascade)
+    for res in results:
+        try:
             with dspy.context(lm=_task_lms.get("research")):
                 score_res = scorer_agent(
                     business_idea=business_idea, search_query=search_query, search_result_snippet=res.snippet
                 )
+        except Exception as e:
+            logger.warning(f"Scoring failed for '{res.title[:40]}': {e}")
+            score_res = None
 
+        if score_res is not None:
             try:
                 score = int(score_res.relevance_score)
             except ValueError:
                 score = 50
+        else:
+            score = 50
 
-            if score >= 60:  # Threshold for relevance
-                # Generate embedding
-                embedding_bytes = emb_service.generate_embedding(res.title + " " + res.snippet)
-                if embedding_bytes:
-                    import struct
+        if score >= 60:  # Threshold for relevance
+            web_repo.create(session_id, res)
+            saved_results.append(res)
 
-                    res.embedding = embedding_bytes
-                    web_repo.create(session_id, res)
-                    saved_results.append(res)
+    # Threshold notification: results found but none passed scoring threshold
+    if results and not saved_results:
+        progress_callback(
+            f"Found {len(results)} results, but none scored above the relevance threshold (60). Consider broadening your query."
+        )
+        return saved_results
 
-                    emb_floats = list(struct.unpack(f"{len(embedding_bytes) // 4}f", embedding_bytes))
-                    docs_to_index.append(
-                        {
-                            "text": f"[{section_name}] {res.title}\\n{res.snippet}",
-                            "metadata": {"url": res.url, "source": "web", "section": section_name},
-                            "embedding": emb_floats,
-                        }
-                    )
-    except Exception as e:
-        logger.error(f"Search/Score failed for query '{search_query}': {e}")
-        progress_callback(f"Search failed: {e}")
+    # Phase 2: Attempt embedding + RAG indexing (does not gatekeep result display)
+    for res in saved_results:
+        embedding_bytes = emb_service.generate_embedding(res.title + " " + res.snippet)
+        if embedding_bytes:
+            import struct
+
+            res.embedding = embedding_bytes
+
+            emb_floats = list(struct.unpack(f"{len(embedding_bytes) // 4}f", embedding_bytes))
+            docs_to_index.append(
+                {
+                    "text": f"[{section_name}] {res.title}\\n{res.snippet}",
+                    "metadata": {"url": res.url, "source": "web", "section": section_name},
+                    "embedding": emb_floats,
+                }
+            )
+        else:
+            progress_callback(
+                f"Warning: Could not generate embedding for '{res.title[:40]}...' — result saved without RAG indexing"
+            )
 
     if docs_to_index:
         progress_callback(f"Indexing {len(docs_to_index)} relevant documents...")
         rag_engine.index_with_embeddings(topic_id, docs_to_index)
         progress_callback("Done!")
-    else:
-        progress_callback("No highly relevant documents found.")
 
     return saved_results
 
