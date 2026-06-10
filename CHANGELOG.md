@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.5 (2026-06-10)
+
+### Bug Fixes
+
+- Search and voices generation
+  ([`a992294`](https://github.com/hapi-ds/mPABC/commit/a9922940062da8fb692a6db10aa3ab9ec5f18e70))
+
+
 ## v1.0.4 (2026-05-04)
 
 ### Bug Fixes
