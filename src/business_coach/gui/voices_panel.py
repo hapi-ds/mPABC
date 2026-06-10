@@ -60,9 +60,10 @@ def create_voices_panel(
                         def make_name_save(persona=p):
                             def on_save(val: str):
                                 try:
-                                    voices_repo.update(
-                                        persona.id, val, persona.description, persona.communication_style
-                                    )
+                                    if persona.id is not None:
+                                        voices_repo.update(
+                                            persona.id, val, persona.description, persona.communication_style
+                                        )
                                 except Exception as e:
                                     logger.exception(f"Failed to save persona name: {e}")
 
@@ -82,7 +83,8 @@ def create_voices_panel(
                         def make_desc_save(persona=p):
                             def on_save(val: str):
                                 try:
-                                    voices_repo.update(persona.id, persona.name, val, persona.communication_style)
+                                    if persona.id is not None:
+                                        voices_repo.update(persona.id, persona.name, val, persona.communication_style)
                                 except Exception as e:
                                     logger.exception(f"Failed to save persona description: {e}")
 

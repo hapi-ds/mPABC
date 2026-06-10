@@ -15,15 +15,13 @@ Preserved behaviors tested:
 """
 
 import json
-import sqlite3
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
-import pytest
-from hypothesis import given, settings, assume
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from business_coach.db.models import VoicePersona, CanvasElement
-from business_coach.db.repository import VoicePersonaRepository, CanvasElementRepository
+from business_coach.db.repository import VoicePersonaRepository
 
 
 # ---------------------------------------------------------------------------

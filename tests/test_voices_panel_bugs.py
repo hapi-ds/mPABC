@@ -13,11 +13,9 @@ Bug conditions tested:
 4. Successful generation → voice_statement should be generated and stored
 """
 
-import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch, call
+from unittest.mock import MagicMock
 
-import pytest
-from hypothesis import given, settings, assume
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 
