@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.6 (2026-06-10)
+
+### Bug Fixes
+
+- Ruff&ty
+  ([`f67a4f3`](https://github.com/hapi-ds/mPABC/commit/f67a4f3a2cae8d09a553cc4431d71712a8d51c52))
+
+
 ## v1.0.5 (2026-06-10)
 
 ### Bug Fixes
