@@ -204,7 +204,7 @@ class TestScorerDownDiscardsAllResults:
             scorer_instance.side_effect = ConnectionError("LM Studio unreachable")
             mock_predict.return_value = scorer_instance
 
-            saved = run_section_search(
+            run_section_search(
                 topic_id=1,
                 business_idea="Test idea",
                 section_name="Competitors",
@@ -375,7 +375,7 @@ class TestThresholdFilterNoNotification:
             mock_predict.return_value = scorer_instance
             mock_emb_cls.return_value.generate_embedding.return_value = _fake_embedding()
 
-            saved = run_section_search(
+            run_section_search(
                 topic_id=1,
                 business_idea="Test idea",
                 section_name="Competitors",
@@ -782,7 +782,7 @@ class TestPreservationProgressCallbackMessages:
             mock_predict.return_value = scorer_instance
             mock_emb_cls.return_value.generate_embedding.return_value = _fake_embedding()
 
-            saved = run_section_search(
+            run_section_search(
                 topic_id=1,
                 business_idea="Test idea",
                 section_name="Competitors",
