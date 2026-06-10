@@ -347,7 +347,9 @@ class VoicePersonaRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
-    def create(self, topic_id: int, name: str, description: str, communication_style: str, voice_statement: str = "") -> int:
+    def create(
+        self, topic_id: int, name: str, description: str, communication_style: str, voice_statement: str = ""
+    ) -> int:
         try:
             cursor = self._conn.execute(
                 """INSERT INTO voice_personas
@@ -361,7 +363,9 @@ class VoicePersonaRepository:
             log_db_error(logger, "INSERT", "voice_personas", str(exc))
             raise
 
-    def update(self, persona_id: int, name: str, description: str, communication_style: str, voice_statement: str = "") -> None:
+    def update(
+        self, persona_id: int, name: str, description: str, communication_style: str, voice_statement: str = ""
+    ) -> None:
         try:
             self._conn.execute(
                 """UPDATE voice_personas SET

@@ -35,16 +35,26 @@ _persona_description = st.text(
     max_size=200,
 )
 
-_communication_style = st.sampled_from([
-    "Professional", "Casual", "Technical", "Empathetic",
-    "Direct", "Storytelling", "Analytical", "Friendly",
-])
+_communication_style = st.sampled_from(
+    [
+        "Professional",
+        "Casual",
+        "Technical",
+        "Empathetic",
+        "Direct",
+        "Storytelling",
+        "Analytical",
+        "Friendly",
+    ]
+)
 
-_persona_dict = st.fixed_dictionaries({
-    "name": _persona_name,
-    "description": _persona_description,
-    "communication_style": _communication_style,
-})
+_persona_dict = st.fixed_dictionaries(
+    {
+        "name": _persona_name,
+        "description": _persona_description,
+        "communication_style": _communication_style,
+    }
+)
 
 _persona_list = st.lists(_persona_dict, min_size=1, max_size=5)
 

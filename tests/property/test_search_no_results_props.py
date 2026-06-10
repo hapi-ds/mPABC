@@ -180,9 +180,7 @@ class TestScorerDownDiscardsAllResults:
 
     @given(results=_web_results_list, query=_search_query)
     @settings(max_examples=10, deadline=None)
-    def test_scorer_failure_produces_threshold_notification(
-        self, results: list[WebSearchResult], query: str
-    ) -> None:
+    def test_scorer_failure_produces_threshold_notification(self, results: list[WebSearchResult], query: str) -> None:
         """Fixed: Scorer failures handled per-result; threshold notification produced."""
         conn = _make_conn_with_topic()
         mock_settings = _make_settings()
@@ -219,8 +217,7 @@ class TestScorerDownDiscardsAllResults:
         # threshold (60), so threshold notification fires with count and suggestion.
         all_messages = " ".join(progress_messages).lower()
         has_threshold_notification = any(
-            ("threshold" in m.lower() or "scored" in m.lower() or "none" in m.lower())
-            and any(c.isdigit() for c in m)
+            ("threshold" in m.lower() or "scored" in m.lower() or "none" in m.lower()) and any(c.isdigit() for c in m)
             for m in progress_messages
         )
         has_suggestion = (
@@ -259,9 +256,7 @@ class TestEmbeddingFailureDropsScoredResults:
 
     @given(results=_web_results_list, query=_search_query)
     @settings(max_examples=10, deadline=None)
-    def test_embedding_none_drops_scored_results(
-        self, results: list[WebSearchResult], query: str
-    ) -> None:
+    def test_embedding_none_drops_scored_results(self, results: list[WebSearchResult], query: str) -> None:
         """Results passing score threshold are dropped when embedding returns None."""
         conn = _make_conn_with_topic()
         mock_settings = _make_settings()
@@ -398,8 +393,7 @@ class TestThresholdFilterNoNotification:
         # Check for a specific threshold notification message that includes
         # both a count AND a suggestion — distinct from the scoring progress
         has_threshold_notification = any(
-            ("threshold" in m.lower() or "below" in m.lower())
-            and any(c.isdigit() for c in m)
+            ("threshold" in m.lower() or "below" in m.lower()) and any(c.isdigit() for c in m)
             for m in progress_messages
         )
         has_suggestion = (
@@ -456,9 +450,7 @@ class TestPreservationSearchWebHappyPath:
         num_results=st.integers(min_value=1, max_value=5),
     )
     @settings(max_examples=20)
-    def test_search_web_returns_web_search_result_list(
-        self, query: str, num_results: int
-    ) -> None:
+    def test_search_web_returns_web_search_result_list(self, query: str, num_results: int) -> None:
         """search_web() returns list[WebSearchResult] on DDG success."""
         # Build fake DDG responses
         fake_ddg_results = [
@@ -502,9 +494,7 @@ class TestPreservationThresholdFiltering:
 
     @given(results=_web_results_list)
     @settings(max_examples=10, deadline=None)
-    def test_score_exactly_60_is_included(
-        self, results: list[WebSearchResult]
-    ) -> None:
+    def test_score_exactly_60_is_included(self, results: list[WebSearchResult]) -> None:
         """Results scoring exactly 60 pass the threshold and are saved."""
         conn = _make_conn_with_topic()
         mock_settings = _make_settings()
@@ -546,9 +536,7 @@ class TestPreservationThresholdFiltering:
 
     @given(results=_web_results_list)
     @settings(max_examples=10, deadline=None)
-    def test_score_59_is_excluded(
-        self, results: list[WebSearchResult]
-    ) -> None:
+    def test_score_59_is_excluded(self, results: list[WebSearchResult]) -> None:
         """Results scoring 59 are excluded by the threshold."""
         conn = _make_conn_with_topic()
         mock_settings = _make_settings()
@@ -755,9 +743,7 @@ class TestPreservationProgressCallbackMessages:
 
     @given(results=_web_results_list, query=_search_query)
     @settings(max_examples=10, deadline=None)
-    def test_happy_path_progress_messages(
-        self, results: list[WebSearchResult], query: str
-    ) -> None:
+    def test_happy_path_progress_messages(self, results: list[WebSearchResult], query: str) -> None:
         """Happy path produces expected progress callback messages."""
         conn = _make_conn_with_topic()
         mock_settings = _make_settings()

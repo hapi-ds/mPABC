@@ -179,15 +179,16 @@ def create_idea_panel(
                                     "unavailable" in m.lower() or "search service" in m.lower()
                                     for m in progress_messages
                                 )
-                                has_threshold_filter = any(
-                                    "threshold" in m.lower() for m in progress_messages
-                                )
+                                has_threshold_filter = any("threshold" in m.lower() for m in progress_messages)
 
                                 if has_service_failure:
                                     # Find the specific error message
                                     error_msg = next(
-                                        (m for m in progress_messages
-                                         if "unavailable" in m.lower() or "search service" in m.lower()),
+                                        (
+                                            m
+                                            for m in progress_messages
+                                            if "unavailable" in m.lower() or "search service" in m.lower()
+                                        ),
                                         "Search service unavailable",
                                     )
                                     with ra:

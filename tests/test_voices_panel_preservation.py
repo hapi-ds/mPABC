@@ -40,10 +40,18 @@ _persona_description = st.text(
     max_size=200,
 )
 
-_communication_style = st.sampled_from([
-    "Professional", "Casual", "Technical", "Empathetic",
-    "Direct", "Storytelling", "Analytical", "Friendly",
-])
+_communication_style = st.sampled_from(
+    [
+        "Professional",
+        "Casual",
+        "Technical",
+        "Empathetic",
+        "Direct",
+        "Storytelling",
+        "Analytical",
+        "Friendly",
+    ]
+)
 
 _voice_persona = st.builds(
     VoicePersona,
@@ -64,11 +72,19 @@ _canvas_element_content = st.text(
     max_size=300,
 )
 
-_canvas_element_name = st.sampled_from([
-    "Key Partners", "Key Activities", "Value Propositions",
-    "Customer Relationships", "Customer Segments", "Key Resources",
-    "Channels", "Cost Structure", "Revenue Streams",
-])
+_canvas_element_name = st.sampled_from(
+    [
+        "Key Partners",
+        "Key Activities",
+        "Value Propositions",
+        "Customer Relationships",
+        "Customer Segments",
+        "Key Resources",
+        "Channels",
+        "Cost Structure",
+        "Revenue Streams",
+    ]
+)
 
 _canvas_element = st.builds(
     CanvasElement,
@@ -126,8 +142,7 @@ class TestDisplayPersonasRendering:
         # and creates a card for each. We verify the count matches.
         rendered_personas = mock_repo.get_by_topic(1)
         assert len(rendered_personas) == len(personas), (
-            f"Expected {len(personas)} personas to be available for rendering, "
-            f"got {len(rendered_personas)}"
+            f"Expected {len(personas)} personas to be available for rendering, got {len(rendered_personas)}"
         )
 
         # Verify each persona has all required fields for card rendering

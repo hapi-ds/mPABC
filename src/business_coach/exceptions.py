@@ -35,9 +35,7 @@ class SearchServiceError(SourceUnavailableError):
         original_error: The underlying exception that caused the failure.
     """
 
-    def __init__(
-        self, source_name: str = "DuckDuckGo", original_error: Exception | None = None
-    ) -> None:
+    def __init__(self, source_name: str = "DuckDuckGo", original_error: Exception | None = None) -> None:
         if original_error is None:
             original_error = Exception("Unknown search service error")
         super().__init__(source_name, original_error)

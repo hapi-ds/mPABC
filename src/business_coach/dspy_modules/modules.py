@@ -18,7 +18,9 @@ class VoicePersonaGenerator(dspy.Signature):
     business_canvas = dspy.InputField(desc="The completed business model canvas elements")
     num_personas = dspy.InputField(desc="Number of personas to generate")
 
-    personas_json = dspy.OutputField(desc="A valid JSON array of objects, each with keys 'name', 'description', and 'communication_style'. Ensure proper commas between objects. Example: [{\"name\": \"...\", \"description\": \"...\", \"communication_style\": \"...\"}]")
+    personas_json = dspy.OutputField(
+        desc='A valid JSON array of objects, each with keys \'name\', \'description\', and \'communication_style\'. Ensure proper commas between objects. Example: [{"name": "...", "description": "...", "communication_style": "..."}]'
+    )
 
 
 class VoiceStatementGenerator(dspy.Signature):
@@ -29,7 +31,9 @@ class VoiceStatementGenerator(dspy.Signature):
     communication_style = dspy.InputField(desc="The persona's communication style")
     business_canvas = dspy.InputField(desc="The business model canvas text")
 
-    voice_statement = dspy.OutputField(desc="A paragraph expressing what this persona would say about the business idea, written in their unique communication style")
+    voice_statement = dspy.OutputField(
+        desc="A paragraph expressing what this persona would say about the business idea, written in their unique communication style"
+    )
 
 
 class PlanSectionGenerator(dspy.Signature):
